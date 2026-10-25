@@ -193,8 +193,8 @@ h2 {
     "f.kits.unknown": {"en": "Content not recorded", "de": "Inhalt nicht erfasst"},
     "f.kits.count": {"en": "{n} kits", "de": "{n} Kits"},
     "f.error": {"en": "Error: ", "de": "Fehler: "},
-    "f.ph.cityPaste": {"en": "Paste entries (name⇥count per line)", "de": "Einträge kopieren (Name⇥Anzahl je Zeile)"},
-    "f.ph.invPaste": {"en": "Inventory export (name⇥count per line)", "de": "Inventar-Export (Name⇥Anzahl je Zeile)"},
+    "f.ph.cityPaste": {"en": "Paste entries (name⇥count per line) or JSON", "de": "Einträge kopieren (Name⇥Anzahl je Zeile) oder JSON"},
+    "f.ph.invPaste": {"en": "Inventory export (name⇥count per line) or JSON", "de": "Inventar-Export (Name⇥Anzahl je Zeile) oder JSON"},
     "f.ph.search": {"en": "Search: name, event, prop, item …", "de": "Suche: Name, Event, Prop, Item …"},
     "f.calc": {"en": "Calculate", "de": "Berechnen"},
     "f.csvPick": {"en": "Choose CSV", "de": "CSV wählen"},
@@ -210,6 +210,12 @@ h2 {
     "f.lvlNone": {"en": "No level found: it is 0 or missing in the GB Calculator. Enter it there and the values from the table will appear automatically.", "de": "Keine Stufe gefunden: im LG Rechner steht sie auf 0 bzw. fehlt. Dort eintragen, dann erscheinen die Werte aus der Tabelle automatisch."},
     "f.bTotal": {"en": "Total buildings", "de": "Gebäude gesamt"},
     "f.areaStreet": {"en": "Area incl. street", "de": "Fläche inkl. Straße"},
+    "f.hist.title": {"en": "History", "de": "Verlauf"},
+    "f.hist.delta": {"en": "Δ vs. previous (eff · buildings · area · value)", "de": "Δ zum Vorherigen (Eff. · Gebäude · Fläche · Wert)"},
+    "f.hist.note": {"en": "Different era or weights than last time – not directly comparable.", "de": "Anderes Zeitalter oder andere Gewichtung als beim letzten Mal – nicht direkt vergleichbar."},
+    "f.hist.legend": {"en": "Buildings · area · Ø eff.", "de": "Gebäude · Fläche · Ø Eff."},
+    "f.hist.clear": {"en": "Clear", "de": "Löschen"},
+    "f.hist.confirm": {"en": "Delete the history?", "de": "Verlauf löschen?"},
     "f.avgEff": {"en": "Ø weighted efficiency", "de": "Ø gewichtete Effizienz"},
     "f.sums": {"en": "Totals", "de": "Summen"},
     "f.unrecognized": {"en": "Not recognized ({n})", "de": "Nicht erkannt ({n})"},
@@ -570,6 +576,7 @@ const PR = I18N.foeff.labels.map(([a, b]) => [
 ]);
 const DEX = I18N.foeff.stats;
 
+let EVRE1, EVRE2;
 function trd(s) {
   if (typeof EVD !== "undefined") {
     const k = s.trim();
@@ -577,34 +584,18 @@ function trd(s) {
   }
   const sp = /^(\s*Sortieren: )([\s\S]+)$/.exec(s),
     R = sp ? sp[1] + trd0(sp[2]) : trd0(s);
-  return LG === "de"
-    ? R.replace(
-        new RegExp(
-          "\\b(" +
-            Object.keys(EVD)
-              .map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-              .join("|") +
-            ") (\\d{4})\\b",
-          "g",
-        ),
-        (m, e, y) => EVD[e] + " " + y,
-      )
-        .replace(
-          new RegExp(
-            "(?<= · )(" +
-              Object.keys(EVD)
-                .map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-                .join("|") +
-              ")(?= · )",
-            "g",
-          ),
-          (e) => EVD[e],
-        )
-        .replace(/GBG-Trials/g, "GG-Prüfung")
-        .replace(/\bAllies\b/g, "Verbündete")
-        .replace(/\b(?:GBG|GbG)\b/g, "GG")
-        .replace(/\bGE\b/g, "GEx")
-    : R;
+  if (LG !== "de") return R;
+  if (!EVRE1) {
+    const alt = Object.keys(EVD).map(escRe).join("|");
+    EVRE1 = new RegExp("\\b(" + alt + ") (\\d{4})\\b", "g");
+    EVRE2 = new RegExp("(?<= · )(" + alt + ")(?= · )", "g");
+  }
+  return R.replace(EVRE1, (m, e, y) => EVD[e] + " " + y)
+    .replace(EVRE2, (e) => EVD[e])
+    .replace(/GBG-Trials/g, "GG-Prüfung")
+    .replace(/\bAllies\b/g, "Verbündete")
+    .replace(/\b(?:GBG|GbG)\b/g, "GG")
+    .replace(/\bGE\b/g, "GEx");
 }
 function trd0(s) {
   const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(s),
@@ -641,7 +632,17 @@ function trl(s) {
   return r;
 }
 // Text eines Textknotens/Attributs je Sprache
-const trn = (s) => (LG === "en" ? trl(s) : trd(s));
+const TRC = new Map();
+const trn = (s) => {
+  const k = LG + "\0" + s;
+  let r = TRC.get(k);
+  if (r === undefined) {
+    r = LG === "en" ? trl(s) : trd(s);
+    TRC.size > 20000 && TRC.clear();
+    TRC.set(k, r);
+  }
+  return r;
+};
 // Übersetzt Textknoten sowie placeholder/title im Teilbaum (nur frisch erzeugtes HTML, daher ohne Merken des Originals)
 function trSub(root) {
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -838,13 +839,16 @@ function drw() {
     }[tab](),
     scrollTo(0, 0));
 }
+let qT = 0;
 function vEff() {
   (setHtml(
     $("#v"),
     `<input id="q" type="search" placeholder="${tl("f.ph.search")}" value="${q}">${evUI()}${skUI("eff")}<div id="l"></div>`,
   ),
     ($("#q").oninput = (e) => {
-      ((q = e.target.value), list());
+      q = e.target.value;
+      clearTimeout(qT);
+      qT = setTimeout(list, 120);
     }),
     skBind("eff", list),
     evBind(list),
@@ -948,21 +952,24 @@ const skList = () =>
       }));
   };
 function list() {
+  if (!$("#l")) return;
   const e = q.toLowerCase(),
     t = ls("sk:eff", "e");
   const fe = ls("fev", ""),
-    fy = ls("fyr", "");
+    fy = ls("fyr", ""),
+    nl = ls("fnl", 0),
+    sd = ls("sd:eff", 0);
   let n = D.b
     .filter(
       (a) =>
         !isHid(a) &&
         (!fe || evK(a) == fe) &&
         (!fy || yrK(a) == fy) &&
-        (!ls("fnl", 0) || !/\bL:/.test(a[2])) &&
+        (!nl || !/\bL:/.test(a[2])) &&
         (!e || hay(a).includes(e)),
     )
     .map((a) => [a, skv(a, t)])
-    .sort(skc(t, ls("sd:eff", 0)));
+    .sort(skc(t, sd));
   const s = n.length;
   setHtml(
     $("#l"),
@@ -1018,7 +1025,7 @@ function vW() {
     setHtml(
       $("#il"),
       Object.keys(n)
-        .filter((s) => (t ? n[s].toLowerCase().includes(t) : iw(s) || IW0[s]))
+        .filter((s) => (t ? n[s].toLowerCase().includes(t) || trn(n[s]).toLowerCase().includes(t) : iw(s) || IW0[s]))
         .sort((s, a) => uw(a) - uw(s) || ut(s) - ut(a) || Math.abs(iw(a)) - Math.abs(iw(s)) || n[s].localeCompare(n[a]))
         .slice(0, 80)
         .map((s) => `<span>${esc(n[s])}</span><input type="number" step="any" data-k="${esc(s)}" value="${iw(s)}">`)
@@ -1258,10 +1265,10 @@ function vImp(e, t, n) {
   const s = ls("imp_" + e, "");
   (setHtml(
     $("#v"),
-    `<textarea id="t" rows="6" placeholder="${n}" style="width:100%;background:var(--c);color:var(--t);border:1px solid var(--b);border-radius:8px;padding:8px;font:inherit">${s}</textarea><div class="row" style="margin:8px 0;gap:8px"><button class="s" id="go">${tl("f.calc")}</button><label class="s" style="border-radius:8px;padding:8px 12px;font-weight:600;background:var(--c);color:var(--t);border:1px solid var(--b)">${tl("f.csvPick")}<input type="file" id="f" accept=".csv,.tsv,.txt,text/csv,text/plain" style="display:none"></label></div><div id="o"></div>`,
+    `<textarea id="t" rows="6" placeholder="${n}" style="width:100%;background:var(--c);color:var(--t);border:1px solid var(--b);border-radius:8px;padding:8px;font:inherit">${s}</textarea><div class="row" style="margin:8px 0;gap:8px"><button class="s" id="go">${tl("f.calc")}</button><label class="s" style="border-radius:8px;padding:8px 12px;font-weight:600;background:var(--c);color:var(--t);border:1px solid var(--b)">${tl("f.csvPick")}<input type="file" id="f" accept=".csv,.tsv,.txt,.json,text/csv,text/plain,application/json" style="display:none"></label></div><div id="o"></div>`,
   ),
     ($("#go").onclick = () => {
-      (sv("imp_" + e, $("#t").value), rIm(e));
+      (sv("imp_" + e, $("#t").value), rIm(e, true));
     }),
     ($("#f").onchange = async (a) => {
       const i = a.target.files[0];
@@ -1274,7 +1281,7 @@ function vImp(e, t, n) {
         l = new TextDecoder("windows-1252").decode(o);
       }
       const c = fixEnc(l);
-      (($("#t").value = c), sv("imp_" + e, c), rIm(e));
+      (($("#t").value = c), sv("imp_" + e, c), rIm(e, true));
     }),
     s && rIm(e));
 }
@@ -1351,7 +1358,7 @@ function itSum(e) {
     "</div>"
   );
 }
-function rIm(e) {
+function rIm(e, save) {
   LGR = null;
   const t = [],
     n = [],
@@ -1450,10 +1457,12 @@ function rIm(e) {
     }
   }),
     t.sort((r, p) => p[2] - r[2]));
+  save && histSave(e, o, i, a);
   const G = cmb(Object.entries(l)).sort((t, n) => t.ks[0] - n.ks[0]);
   setHtml(
     $("#o"),
     `<div class="card"><div class="row"><span>${tl("f.bTotal")}</span><b>${fmt(o, 0)}</b></div><div class="row"><span>${tl("f.areaStreet")}</span><b>${fmt(i, 0)}</b></div><div class="row"><span>${tl("f.avgEff")}</span><b class="e">${i ? fmt(a / i) : "–"}</b></div></div>` +
+      histHtml(e) +
       (G.length
         ? `<h2>${tl("f.sums")}</h2><div class="card">` +
           G.map((r) => `<div class="row"><span class="m">${cl(r.ks)}</span><b>${fmt(r.v)}</b></div>`).join("") +
@@ -1497,6 +1506,12 @@ function rIm(e) {
     };
   ((u.oninput = y),
     skBind(e, y),
+    document.querySelectorAll("#o [data-hc]").forEach(
+      (r) =>
+        (r.onclick = () => {
+          confirm(tl("f.hist.confirm")) && (sv("hist_" + e, []), rIm(e));
+        }),
+    ),
     document.querySelectorAll("#o [data-xa]").forEach(
       (r) =>
         (r.onclick = () => {
@@ -1528,6 +1543,60 @@ function rIm(e) {
         }),
     ),
     y());
+}
+
+// Verlauf: bei jedem „Berechnen“/Datei-Import ein Schnappschuss (Anzahl, Fläche, Wert, Effizienz); gleicher Text + gleiche Gewichtung ersetzt den letzten
+const histKey = () => EI + "|" + W.join(","),
+  strHash = (s) => {
+    let h = 5381;
+    for (let k = 0; k < s.length; k++) h = ((h << 5) + h + s.charCodeAt(k)) | 0;
+    return h + ":" + s.length;
+  };
+function histSave(e, n, ar, v) {
+  if (!n) return;
+  const L = ls("hist_" + e, []),
+    z = { t: Date.now(), n, ar, v, e: ar ? v / ar : 0, s: histKey(), h: strHash(ls("imp_" + e, "")) },
+    p = L[L.length - 1];
+  p && p.h == z.h && p.s == z.s ? (L[L.length - 1] = z) : L.push(z);
+  sv("hist_" + e, L.slice(-100));
+}
+function histHtml(e) {
+  const L = ls("hist_" + e, []);
+  if (!L.length) return "";
+  const dl = (x, d) => (x > 0 ? "+" : "") + fmt(x, d),
+    a = L[L.length - 1],
+    p = L[L.length - 2],
+    dt = (t) =>
+      new Date(t).toLocaleString(LG == "de" ? "de-DE" : "en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+  let g = "";
+  if (L.length > 1) {
+    const ys = L.map((x) => x.e),
+      lo = Math.min(...ys),
+      hi = Math.max(...ys),
+      pts = ys.map((y, k) => [6 + (k * 288) / (L.length - 1), 64 - (hi > lo ? ((y - lo) / (hi - lo)) * 56 : 28)]);
+    g = `<svg viewBox="0 0 300 70" style="width:100%;height:70px;display:block;margin:6px 0"><polyline fill="none" stroke="var(--a)" stroke-width="2" points="${pts.map((q) => q.map((x) => x.toFixed(1)).join(",")).join(" ")}"/>${pts.map((q) => `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="2.5" fill="var(--a)"/>`).join("")}</svg>`;
+  }
+  return (
+    `<h2>${tl("f.hist.title")}</h2><div class="card">${g}` +
+    (p
+      ? `<div class="row"><span class="m">${tl("f.hist.delta")}</span><span>${dl(a.e - p.e, 2)} <span class="m">· ${dl(a.n - p.n, 0)} · ${dl(a.ar - p.ar, 0)} · ${dl(a.v - p.v, 0)}</span></span></div>` +
+        (a.s != p.s ? `<div class="m" style="font-size:12px">${tl("f.hist.note")}</div>` : "")
+      : "") +
+    L.slice(-6)
+      .reverse()
+      .map(
+        (x) =>
+          `<div class="row"><span class="m">${dt(x.t)}</span><span>${fmt(x.n, 0)} · ${fmt(x.ar, 0)} · <b class="e">${fmt(x.e)}</b></span></div>`,
+      )
+      .join("") +
+    `<div class="row" style="margin-top:6px"><span class="m" style="font-size:12px">${tl("f.hist.legend")}</span><button class="s" data-hc="1">${tl("f.hist.clear")}</button></div></div>`
+  );
 }
 </script><script>
 // CSV-/Textimport: Zeichensatz-Korrektur, Parser, Spaltenzuordnung (csvRows, fnd, fromCsv, ent …)
@@ -1847,7 +1916,35 @@ const SKIPK = /^(#|level|lvl|stufe|stage|anzahl|count|amount|menge|name|geb.ude|
           .map(([t, n]) => esc(t) + "=" + n)
           .join(" · ")}${e.length > 10 ? " …" : ""}</div>`
       : "";
+// JSON-Export der Bewertungsliste (Array von Objekten mit denselben Spalten wie die CSV) -> Zeilen wie bei der CSV
+function jsonRows(e) {
+  const t = e.trim();
+  if (!/^[[{]/.test(t)) return null;
+  let d;
+  try {
+    d = JSON.parse(t);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(d)) d = Object.values(d).find(Array.isArray);
+  if (!d) return null;
+  const num = (v) => parseFloat(String(v).replace(",", ".")) || 0,
+    pick = (o, re) => {
+      const k = Object.keys(o).find((x) => re.test(x.trim().toLowerCase()));
+      return k == null ? undefined : o[k];
+    };
+  return d
+    .filter((o) => o && typeof o == "object")
+    .map((o) => [
+      String(pick(o, /^(geb.ude|building|name)$/) ?? "").trim(),
+      num(pick(o, /^(#|anzahl|amount|count|menge)$/)),
+      Object.fromEntries(Object.entries(o).map(([k, v]) => [k.trim().toLowerCase(), num(v)])),
+    ])
+    .filter((i) => i[0] && i[1]);
+}
 function ent(e) {
+  const j = jsonRows(e);
+  if (j) return j;
   const t = csvRows(e),
     n = (t[0] || []).map((i) => i.trim().toLowerCase()),
     s = n.findIndex((i) => /^(geb.ude|building|name)$/.test(i) || i.startsWith("geb")),
@@ -2140,6 +2237,7 @@ function kitCard(k, src) {
   return `<div class="card"><div class="row"><b class="${kitCls(k).trim()}">${esc(name)}</b></div><h2>${tl("f.kits.content")}</h2>${cHtml}<h2>${tl("f.kits.from")}</h2>${sHtml}</div>`;
 }
 function kitList() {
+  if (!$("#kl")) return;
   const e = kq.toLowerCase().trim(),
     idx = kitIndex(),
     dm = kitDeMap(),
@@ -2163,13 +2261,16 @@ function kitList() {
       (all.length > 40 ? `<div class="m">${tl("f.more", { n: all.length - 40 })}</div>` : ""),
   );
 }
+let kqT = 0;
 function vKits() {
   (setHtml(
     $("#v"),
     `<input id="kq" type="search" placeholder="${tl("f.kits.ph")}" value="${esc(kq)}"><div id="kl"></div>`,
   ),
     ($("#kq").oninput = (e) => {
-      ((kq = e.target.value), kitList());
+      kq = e.target.value;
+      clearTimeout(kqT);
+      kqT = setTimeout(kitList, 120);
     }),
     kitList());
 }

@@ -162,7 +162,7 @@ td + td {
 <label style="align-self:center"><input type="checkbox" id="only"> <span data-i18n="ui.thisEraOnly">this era only</span></label></div>
 <div id="pal"></div></details>
 <details id="bld"><summary data-i18n="ui.placedBuildings">Placed buildings</summary><div id="bl"></div></details>
-<details open><summary data-i18n="ui.values">Values</summary><div id="val"></div></details>
+<details open><summary data-i18n="ui.values">Values</summary><div style="display:flex;gap:6px;align-items:center;margin:4px 0"><span id="mkl" style="white-space:nowrap"></span><input id="mk" type="text" inputmode="decimal" style="flex:1;min-width:0"></div><div id="val"></div></details>
 </div>
 <script src="city-data.js"></script><script src="foeff-data.js"></script>
 <script>
@@ -231,6 +231,11 @@ td + td {
     "era.auto": {"en": "Auto", "de": "Auto"},
     "era.fixedByBuilding": {"en": "fixed by building", "de": "durch Gebäude festgelegt"},
     "era.cityEra": {"en": "= city era", "de": "= Stadt-Zeitalter"},
+    "mk.label": {"en": "Highlight below efficiency:", "de": "Markieren unter Effizienz:"},
+    "mk.ph": {"en": "e.g. 15 (empty = off)", "de": "z. B. 15 (leer = aus)"},
+    "mk.summary": {"en": "{n} buildings below {t} highlighted ({p} % of building area)", "de": "{n} Gebäude unter {t} markiert ({p} % der Gebäudefläche)"},
+    "mk.eff": {"en": "eff.", "de": "Eff."},
+    "mk.note": {"en": "Efficiency as in the Efficiency tab (stat and item weights from there, area incl. the street the building needs). Inactive buildings are not counted.", "de": "Effizienz wie im Effizienz-Tab (Wert- und Item-Gewichte von dort, Fläche inkl. benötigter Straße). Inaktive Gebäude zählen nicht mit."},
     "val.itemsTotal": {"en": "Items (total)", "de": "Items (Summe)"},
     "val.whole": {"en": "(whole)", "de": "(ganze)"},
     "val.area": {"en": "Area used / free / total", "de": "Fläche belegt / frei / gesamt"},
@@ -240,7 +245,7 @@ td + td {
     "val.note": {"en": "Values from the Efficiency data (active buildings only, selected era)", "de": "Werte aus den Efficiency-Daten (nur aktive Gebäude, gewähltes Zeitalter)"},
     "io.exportFailed": {"en": "Export failed", "de": "Export fehlgeschlagen"},
     "io.importing": {"en": "Importing…", "de": "Import läuft…"},
-    "io.importFailed": {"en": "Import failed – please choose city planner export.txt.", "de": "Import fehlgeschlagen – bitte die city planner export.txt wählen."},
+    "io.importFailed": {"en": "Import failed – please choose city planner export.txt or a city-plan.json.", "de": "Import fehlgeschlagen – bitte die city planner export.txt oder eine city-plan.json wählen."},
     "bl.nInactive": {"en": "{n} inactive", "de": "{n} inaktiv"},
     "sel.nSelected": {"en": "{n} selected", "de": "{n} ausgewählt"},
     "sel.nameSelected": {"en": "{name}: {n} selected", "de": "{name}: {n} ausgewählt"},
@@ -1000,7 +1005,102 @@ function fmt(n) {
     ? n.toLocaleString("de-DE", { maximumFractionDigits: 2 })
     : Math.round(n).toLocaleString("de-DE");
 }
+// Markierung schwacher Gebäude: Effizienz = gewichteter Wert / Fläche (Gewichte aus dem Effizienz-Tab, sonst Standard; ohne Item-Wert)
+let MKS = new Set();
+// Schwelle: gespeicherte Zahl (Komma oder Punkt), leer = aus
+const mkThr = () => {
+  try {
+    const v = parseFloat(String(localStorage.getItem("cityMkT") || "").replace(",", "."));
+    return isNaN(v) ? null : v;
+  } catch (e) {
+    return null;
+  }
+};
+function mkOpts() {
+  const s = $("mk"),
+    v = mkThr();
+  s.placeholder = tl("mk.ph");
+  s.value = v == null ? "" : String(v).replace(".", LG == "de" ? "," : ".");
+  $("mkl").textContent = tl("mk.label");
+}
+function mkWeights() {
+  let w = [];
+  try {
+    w = JSON.parse(localStorage.getItem("foeff:w")) || [];
+  } catch (e) {}
+  return (q) => (typeof w[q] == "number" ? w[q] : q < 60 ? EF.D.w[q] : (EF.LGL[q - 60] || [0, 0])[1]) || 0;
+}
+// Item-Wert wie im Effizienz-Tab (iv/ie): Grundwert + Abweichung der eigenen Item-Gewichte + zeitalterabhängige Items
+const mkPI = {};
+function mkItems(id) {
+  return (
+    mkPI[id] ||
+    (mkPI[id] = (EF.IT[id] || [])
+      .map((t) => {
+        const n = t.match(/^(.+) – ([\d.]+)(?:\/([\d.]+))?$/);
+        return n ? [stem(n[1]), n[3] ? n[2] / n[3] : +n[2]] : 0;
+      })
+      .filter(Boolean))
+  );
+}
+function mkItemVal(it, IWo) {
+  const d = it.d;
+  if (d.t == "greatbuilding") return 0;
+  const i = EF.ix[d.i];
+  if (i == null) return 0;
+  const k = Math.max(0, Math.min(22, ef(it) - 1)),
+    p = mkItems(d.i),
+    x = EF.ITE[d.i];
+  let t = EF.D.b[i][6] || 0;
+  for (const n in IWo) for (const [s, a] of p) s == n && (t += (IWo[n] - (EF.IW0[n] || 0)) * a);
+  if (x)
+    for (const [s, a] of p) {
+      const v = x[s];
+      if (v) t += (v.n[k] / v.m - a) * (IWo[s] == null ? EF.IW0[s] || 0 : IWo[s]);
+    }
+  return t;
+}
+const mkStreet = (it) => {
+  if (it.d.t == "greatbuilding" || !EF) return 0;
+  const i = EF.ix[it.d.i];
+  return i == null ? 0 : EF.D.b[i][5] || 0;
+};
+function mkCalc(rows) {
+  MKS = new Set();
+  const thr = mkThr();
+  if (thr == null || !rows.length) return "";
+  const W = mkWeights();
+  let IWo = {};
+  try {
+    IWo = JSON.parse(localStorage.getItem("foeff:iw")) || {};
+  } catch (e) {}
+  rows.forEach((r) => {
+    r.e = (Object.keys(r.v).reduce((s, q) => s + W(+q) * r.v[q], 0) + mkItemVal(r.it, IWo)) / r.a;
+  });
+  rows.sort((x, y) => x.e - y.e);
+  const tot = rows.reduce((s, r) => s + r.a, 0),
+    G = new Map();
+  let c = 0;
+  for (const r of rows) {
+    if (!(r.e < thr)) break;
+    c += r.a;
+    MKS.add(r.it);
+    const k = r.it.d.i + "|" + ef(r.it),
+      g = G.get(k);
+    g ? g.n++ : G.set(k, { it: r.it, n: 1, e: r.e });
+  }
+  return (
+    `<div style="margin:6px 0"><b style="color:#ff6b6b">${tl("mk.summary", { n: MKS.size, t: thr.toLocaleString("de-DE", { maximumFractionDigits: 2 }), p: fmt((c / tot) * 100) })}</b>` +
+    [...G.values()]
+      .slice(0, 12)
+      .map((g) => `<div class="m">${g.n}× ${nmi(g.it)} · ${tl("mk.eff")} ${fmt(g.e)}</div>`)
+      .join("") +
+    (G.size > 12 ? `<div class="m">… ${G.size - 12}</div>` : "") +
+    `<div style="color:var(--muted);font-size:11px">${tl("mk.note")}</div></div>`
+  );
+}
 function values() {
+  const mkRows = [];
   let area = 0,
     tot = 0,
     act = 0,
@@ -1030,9 +1130,12 @@ function values() {
       return;
     }
     for (const q in v) S[q] = (S[q] || 0) + v[q];
+    if (it.d.t != "street" && it.d.t != "main_building") mkRows.push({ it, v, a: it.w * it.l + mkStreet(it) });
   });
+  const mkHtml = EF ? mkCalc(mkRows) : "";
   const row = (a, b, c) => `<tr><td>${a}</td><td${c ? ` class="${c}"` : ""}>${b}</td></tr>`;
   $("val").innerHTML =
+    mkHtml +
     "<table>" +
     row(tl("val.area"), `${area} / ${tot - area} / ${tot}`) +
     row(
@@ -1093,7 +1196,7 @@ function lab(t, x, y, w, l, fc) {
     fs -= 1;
   }
 }
-function draw() {
+function draw(fast) {
   const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 3, 4096 / (N * cs))),
     px = Math.round(N * cs * dpr);
   cv.width = cv.height = px;
@@ -1151,6 +1254,14 @@ function draw() {
     cx.globalAlpha = 1;
     cx.strokeStyle = "rgba(0,0,0,.5)";
     cx.strokeRect(x + 0.5, y + 0.5, w - 1, l - 1);
+    if (MKS.has(it)) {
+      cx.fillStyle = "rgba(255,60,60,.4)";
+      cx.fillRect(x + 0.5, y + 0.5, w - 1, l - 1);
+      cx.strokeStyle = "#ff3b3b";
+      cx.lineWidth = 2;
+      cx.strokeRect(x + 1.5, y + 1.5, w - 3, l - 3);
+      cx.lineWidth = 1;
+    }
     if (cs >= 10 && w >= 34 && l >= cs * 1.5)
       lab(
         nmi(it),
@@ -1176,8 +1287,10 @@ function draw() {
       cx.fillStyle = r.c;
       cx.fillRect(r.x * cs, r.y * cs, r.w * cs, r.l * cs);
     });
-  values();
-  palette();
+  if (!fast) {
+    values();
+    palette();
+  }
 }
 </script><script>
 // Planer, Teil: Maus/Zeiger auf dem Raster: cell, free, Automatische Planung (mkplan), Verschieben (mvplan)
@@ -1370,10 +1483,15 @@ cv.addEventListener("pointerdown", (e) => {
   plan = mkplan(drag, drag);
   draw();
 });
+let dragRaf = 0;
 cv.addEventListener("pointermove", (e) => {
   if (!drag) return;
   plan = drag.mv ? mvplan(cell(e)) : mkplan(drag, cell(e));
-  draw();
+  if (!dragRaf)
+    dragRaf = requestAnimationFrame(() => {
+      dragRaf = 0;
+      drag && draw(true);
+    });
 });
 cv.addEventListener("pointerup", (e) => {
   if (tool == "hand") {
@@ -1715,10 +1833,13 @@ $("file").onchange = async (e) => {
     const i = t.indexOf(',"CityEntities"');
     if (i > 0) t = t.slice(0, i) + "}";
     const d = JSON.parse(t),
-      M = d.CityMapData;
+      // Spiel-Export „city-plan.json“ (cityData/mapData/currentEra) oder Planer-/Alt-Export (CityMapData/UnlockedAreas)
+      M = d.CityMapData || d.cityData,
+      areas = d.UnlockedAreas || d.mapData,
+      curEra = d.currentEra;
     if (!M) throw 0;
     const u = maxB.map((_, b) => isMin(b));
-    (d.UnlockedAreas || []).forEach((a) => {
+    (areas || []).forEach((a) => {
       const x = a.x || 0,
         y = a.y || 0;
       for (let r = y >> 2; r < (y + a.length) >> 2; r++)
@@ -1736,6 +1857,8 @@ $("file").onchange = async (e) => {
       {
         const it = mk(d, v.x || 0, v.y || 0, v.level);
         if (v._er != null) it.er = v._er;
+        // Spiel-Export: Zeitalter des Gebäudes (nur Gebäude, die vom Stadt-Zeitalter abweichen)
+        else if (v.type == "generic_building" && E.includes(v.era) && v.era != curEra) it.er = E.indexOf(v.era);
         its.push(it);
       }
     }
@@ -1774,6 +1897,7 @@ $("lgs").onchange = (e) => {
 // Früher Teil von js/city.js; Ladereihenfolge: siehe <script>-Tags in city.html.
 function langUI() {
   eraShow();
+  mkOpts();
   $("lgs").value = LG;
   eraOpts();
   applyI18n();
@@ -1819,6 +1943,13 @@ calc();
 setTool("hand");
 fit();
 applyI18n();
+mkOpts();
+$("mk").oninput = (e) => {
+  try {
+    localStorage.setItem("cityMkT", e.target.value);
+  } catch (x) {}
+  draw();
+};
 $("lgs").value = LG;
 // Daten der Effizienz-Tabellen anbinden (EF). Muss als letztes laufen: der Microtask startet, sobald dieses Skript fertig ist, und braucht dann calc/draw/palette aus allen Teilen.
 Promise.resolve().then(() => {
@@ -1826,7 +1957,18 @@ Promise.resolve().then(() => {
     ER = DATA.jEra,
     ix = {};
   D.b.forEach((b, i) => (ix[b[0]] = i));
-  EF = { D, ER, ix, LGA: DATA.jLGA, LGV: DATA.jLGV, LGI: DATA.jLGI, LGL: DATA.jLGL, IT: DATA.jIT, ITE: DATA.jITE };
+  EF = {
+    D,
+    ER,
+    ix,
+    LGA: DATA.jLGA,
+    LGV: DATA.jLGV,
+    LGI: DATA.jLGI,
+    LGL: DATA.jLGL,
+    IT: DATA.jIT,
+    ITE: DATA.jITE,
+    IW0: DATA.jIW0,
+  };
   calc();
   draw();
   palette();
