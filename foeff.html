@@ -197,7 +197,7 @@ h2 {
     "f.ph.invPaste": {"en": "Inventory export (name⇥count per line) or JSON", "de": "Inventar-Export (Name⇥Anzahl je Zeile) oder JSON"},
     "f.ph.search": {"en": "Search: name, event, prop, item …", "de": "Suche: Name, Event, Prop, Item …"},
     "f.calc": {"en": "Calculate", "de": "Berechnen"},
-    "f.csvPick": {"en": "Choose CSV", "de": "CSV wählen"},
+    "f.csvPick": {"en": "Choose file", "de": "Datei wählen"},
     "f.own": {"en": "(own)", "de": "(eigen)"},
     "f.lgTitle": {"en": "Great Buildings ({n})", "de": "Legendäre Gebäude ({n})"},
     "f.lvlN": {"en": "Level {n}", "de": "Stufe {n}"},
@@ -264,6 +264,17 @@ h2 {
     "f.placedLc": {"en": "placed", "de": "platziert"},
     "f.notPlaced": {"en": "not placed", "de": "nicht platziert"},
     "f.noBonus": {"en": "no combat bonuses", "de": "keine Kampfboni"},
+    "f.al.sp": {"en": "Special effect", "de": "Spezialeffekt"},
+    "f.al.spUt": {"en": "Unit type", "de": "Einheitentyp"},
+    "f.al.spUtN": {"en": "Unit type (next era)", "de": "Einheitentyp (nächstes Zeitalter)"},
+    "f.al.spAb": {"en": "Ability", "de": "Fähigkeit"},
+    "f.al.spCh": {"en": "Trigger chance", "de": "Auslösechance"},
+    "f.rar.common": {"en": "common", "de": "gewöhnlich"},
+    "f.rar.uncommon": {"en": "uncommon", "de": "ungewöhnlich"},
+    "f.rar.rare": {"en": "rare", "de": "selten"},
+    "f.rar.epic": {"en": "epic", "de": "episch"},
+    "f.rar.legendary": {"en": "legendary", "de": "legendär"},
+    "f.al.spEv": {"en": "Expected value", "de": "Erwartungswert"},
     "f.selection": {"en": "Selection ({a} of {b})", "de": "Auswahl ({a} von {b})"},
     "f.placed": {"en": "Placed", "de": "Platziert"},
     "f.all": {"en": "All", "de": "Alle"},
@@ -304,6 +315,22 @@ h2 {
     ["Güter (Plünderung)", "Goods (plunder)"]
   ],
   "stats": {
+    "Spartan Soldier": "Spartanischer Soldat",
+    "Alexander the Great": "Alexander der Große",
+    "Artemisia I of Caria": "Artemisia I. von Karien",
+    "Pompey the Great": "Pompeius der Große",
+    "Themistocles": "Themistokles",
+    "Nebuchadnezzar II": "Nebukadnezar II.",
+    "Melisende, Queen of Jerusalem": "Melisende, Königin von Jerusalem",
+    "Queen Medb": "Königin Medb",
+    "Gustavus Adolphus": "Gustav II. Adolf",
+    "Eric Bloodaxe": "Erik Blutaxt",
+    "Queen Gunnhild": "Königin Gunnhild",
+    "Matilda of Tuscany": "Mathilde von Tuszien",
+    "Jayavarman VII": "Jayavarman VII.",
+    "Margaret I of Denmark": "Margarete I. von Dänemark",
+    "Shajar al-Durr": "Schadscharat ad-Durr",
+    "Qin Shi Huang": "Qin Shihuangdi",
     "Items": "Gegenstände",
     "Forge Points": "Forge-Punkte",
     "Forge Points Boost": "Forge-Punkte-Bonus",
@@ -1973,6 +2000,71 @@ function ent(e) {
 // Tab „Verbündete“ (vAl …): Bestand, Matrix, Rechner, Platziert
 // Teil 7/8 von foeff-app.js (früher eine Datei); Ladereihenfolge: siehe <script>-Tags in foeff.html.
 const RA = ["common", "uncommon", "rare", "epic", "legendary"];
+// Spezialeffekte (Text, Matrix-Spalte „Unit Type“/„Ally Ability“) – stehen nicht in data/jA.js (nur Zahlenwerte)
+const AX = {
+  "King Arthur|rare": "[Unit Type NextEra] Heavy – 1",
+  "King Arthur|legendary": "[Ally Ability] Contact Chance for GBG Heavy x200 – 1",
+  "Merlin|rare": "[Unit Type NextEra] Ranged – 1",
+  "Merlin|legendary": "[Ally Ability] Flying Chance for GBG Ranged x200 – 1",
+  "Morgan le Fay|rare": "[Unit Type NextEra] Artillery – 1",
+  "Morgan le Fay|legendary": "[Ally Ability] MIRV Chance for GBG Artillery x200 – 1",
+  "Louis Pasteur|rare": "[Unit Type] Ranged – 1",
+  "Louis Pasteur|legendary": "[Ally Ability] Reactive Armor 4 Chance for GBG Ranged x75 – 1",
+  "Florence Nightingale|rare": "[Unit Type] Heavy – 1",
+  "Florence Nightingale|legendary": "[Ally Ability] Morale Chance for Heavy x180 – 1",
+  "Miyamoto Musashi|rare": "[Unit Type] Light – 1",
+  "Miyamoto Musashi|legendary": "[Ally Ability] Close Quarters Chance for GBG Light x10 – 1",
+  "Nakano Takeko|rare": "[Unit Type] Artillery – 1",
+  "Nakano Takeko|legendary": "[Ally Ability] Dug Chance for GEX Artillery x25 – 1",
+  "Matilda of Tuscany|rare": "[Unit Type] Fast – 1",
+  "Matilda of Tuscany|legendary": "[Ally Ability] Poison Chance for GBG Fast x200 – 1",
+  "Jayavarman VII|rare": "[Unit Type] Light – 1",
+  "Jayavarman VII|legendary": "[Ally Ability] Frenzy Chance for GBG Light x200 – 1",
+  "Margaret I of Denmark|rare": "[Unit Type] Heavy – 1",
+  "Margaret I of Denmark|legendary": "[Ally Ability] Power Shot Chance for Heavy x200 – 1",
+};
+const rt = (r) => tl("f.rar." + r),
+  aty = (t) => (LG == "de" && { military: "Militär", science: "Wissenschaft" }[t]) || t,
+  AXU = { Heavy: "Schwere Einheit", Light: "Leichte Einheit", Ranged: "Fernkämpfer", Artillery: "Artillerie", Fast: "Schnelle Einheit" },
+  AXA = { Contact: "Kontakt", Flying: "Fliegend", MIRV: "MIRV", "Reactive Armor 4": "Reaktivpanzerung 4", Morale: "Moral", Dug: "Eingraben", Poison: "Gift", Frenzy: "Raserei", "Power Shot": "Mega-Schuss", "Close Quarters": "Auge in Auge" };
+// Spezialeffekt-Text ins Deutsche (nur bei DE; Namen der Fähigkeiten sind eigene Übersetzungen)
+function axT(x) {
+  if (LG != "de") return x;
+  let m = /^(\w+) – (\d+)$/.exec(x);
+  if (m && AXU[m[1]]) return AXU[m[1]] + " – " + m[2];
+  m = /^(.+?) Chance for (?:(GBG|GEX) )?(\w+) x(\d+) – (\d+)$/.exec(x);
+  return m && AXA[m[1]] && AXU[m[3]] ? `${AXA[m[1]]}-Chance für ${m[2] ? (m[2] == "GBG" ? "GG " : "GEx ") : ""}${AXU[m[3]]} x${m[4]} – ${m[5]}` : x;
+}
+const AXK = { "Unit Type": "f.al.spUt", "Unit Type NextEra": "f.al.spUtN", "Ally Ability": "f.al.spAb" };
+function axRows(n, r, l) {
+  return RA.slice(0, RA.indexOf(r) + 1)
+    .map((x) => axRow(n, x, l))
+    .join("");
+}
+// Fähigkeits-Chance (%): Start + aufrunden((Ende - Start) * Position / (Maxlevel - 1)); Erwartungswert = Chance * Faktor (xN im Text)
+// 33 Schritte auf 100 Level: der Rest-Level liegt in der Mitte (ab Level Max/2 Position = Level - 2, sonst Level - 1); an Spielwerten gemessen, keine offizielle Quelle
+function axChance(a, l) {
+  const c = Math.round(a[5] * 100),
+    e = Math.round(a[6] * 100),
+    p = l < a[4] / 2 ? l - 1 : l - 2;
+  return c + Math.ceil(((e - c) * p) / (a[4] - 1) - 1e-9);
+}
+function axRow(n, r, l) {
+  const x = AX[n + "|" + r],
+    m = x && /^\[(.+?)\]\s*(.*)$/.exec(x);
+  if (!m) return "";
+  let h = `<div class="row"><span class="m">${tl(AXK[m[1]] || "f.al.sp")}</span><span>${axT(m[2])}</span></div>`;
+  const a = m[1] == "Ally Ability" && A.m.find((i) => i[0] == n && i[2] == r),
+    f = a && /x(\d+)/.exec(m[2]);
+  if (a && f) {
+    const k = +f[1] / 100,
+      c0 = axChance(a, 1),
+      c1 = axChance(a, a[4]),
+      c = l ? axChance(a, Math.max(1, Math.min(a[4], l))) : 0;
+    h += `<div class="row"><span class="m">${tl("f.al.spCh")}</span><span>${l ? `${c} %` : `${c0} % → ${c1} %`}</span></div><div class="row"><span class="m">${tl("f.al.spEv")}</span><span>${l ? fmt(c * k) : `${fmt(c0 * k)} → ${fmt(c1 * k)}`}</span></div>`;
+  }
+  return h;
+}
 function aEff(e, t, n) {
   const s = RA.indexOf(t) + 1;
   let a = 0;
@@ -1995,12 +2087,12 @@ function aVals(e, t, n) {
   });
   return r;
 }
-let al = ls("al", []);
+let al = ls("al", []).map((x) => (x[0] == "König Artus" ? ["King Arthur", x[1], x[2]] : x));
 function vAlC() {
   const e = [...new Set(A.m.map((t) => t[0]))].sort();
   (setHtml(
     $("#av"),
-    `<div class="card"><select id="an">${e.map((t) => `<option>${t}</option>`).join("")}</select><div class="row" style="margin-top:6px;gap:6px"><select id="ar">${RA.map((t) => `<option>${t}</option>`).join("")}</select><input id="al" type="number" min="1" max="100" value="100" style="width:90px"><button class="s" id="aa">+</button></div></div><div id="ao"></div>`,
+    `<div class="card"><select id="an">${e.map((t) => `<option value="${t}">${t}</option>`).join("")}</select><div class="row" style="margin-top:6px;gap:6px"><select id="ar">${RA.map((t) => `<option value="${t}">${rt(t)}</option>`).join("")}</select><input id="al" type="number" min="1" max="100" value="100" style="width:90px"><button class="s" id="aa">+</button></div></div><div id="ao"></div>`,
   ),
     ($("#aa").onclick = () => {
       (al.push([$("#an").value, $("#ar").value, Math.max(1, Math.min(100, +$("#al").value || 1))]),
@@ -2036,7 +2128,7 @@ function vAlB() {
     t = MY.map((i, o) => o).sort((i, o) => myE(MY[o]) - myE(MY[i])),
     n = (i) => {
       const o = MY[i];
-      return `<div class="card pick${e.has(i) ? " sel" : ""}" data-i="${i}"><div class="row"><b><span class="ck">${e.has(i) ? "☑" : "☐"}</span> ${o[0]}</b><span class="e">${fmt(myE(o))}</span></div><div class="m"><span class="chip${o[3] ? " on" : ""}">${o[3] ? tl("f.placedLc") : tl("f.notPlaced")}</span> ${o[1]} · Level ${o[2]}</div><div class="it">${kbRows(o[5]) || `<div class="m">${tl("f.noBonus")}</div>`}</div></div>`;
+      return `<div class="card pick${e.has(i) ? " sel" : ""}" data-i="${i}"><div class="row"><b><span class="ck">${e.has(i) ? "☑" : "☐"}</span> ${o[0]}</b><span class="e">${fmt(myE(o))}</span></div><div class="m"><span class="chip${o[3] ? " on" : ""}">${o[3] ? tl("f.placedLc") : tl("f.notPlaced")}</span> ${rt(o[1])} · Level ${o[2]}</div><div class="it">${kbRows(o[5]) + axRows(o[0], o[1], o[2]) || `<div class="m">${tl("f.noBonus")}</div>`}</div></div>`;
     },
     s = () => {
       const i = [...e].map((l) => MY[l]),
@@ -2109,7 +2201,7 @@ function lM() {
   const e = aq.toLowerCase(),
     t = A.m
       .map((n) => [n, Object.entries(n[8]).reduce((s, [a, i]) => s + W[a] * i * n[6], 0)])
-      .filter(([n]) => !e || (n[0] + " " + n[2] + " " + n[1]).toLowerCase().includes(e))
+      .filter(([n]) => !e || (n[0] + " " + trn(n[0]) + " " + n[2] + " " + rt(n[2]) + " " + n[1] + " " + aty(n[1])).toLowerCase().includes(e))
       .sort((n, s) => s[1] - n[1]);
   setHtml(
     $("#al2"),
@@ -2117,14 +2209,14 @@ function lM() {
       .slice(0, 150)
       .map(
         ([n, s]) =>
-          `<div class="card"><div class="row"><b>${n[0]}</b><span class="e">${fmt(s)}</span></div><div class="m">${n[2]} · ${n[1]} · ${tl("f.maxLevel", { n: n[4] })}</div><div class="it">${cmb(
+          `<div class="card"><div class="row"><b>${n[0]}</b><span class="e">${fmt(s)}</span></div><div class="m">${rt(n[2])} · ${aty(n[1])} · ${tl("f.maxLevel", { n: n[4] })}</div><div class="it">${cmb(
             Object.entries(n[8]).sort((a, i) => a[0] - i[0]),
           )
             .map(
               (a) =>
                 `<div class="row"><span class="m">${kbm(a.ks)}</span><span>+${fmt(a.v * n[5])} → +${fmt(a.v * n[6])}${un(a.ks[0])}</span></div>`,
             )
-            .join("")}</div></div>`,
+            .join("")}${axRow(n[0], n[2])}</div></div>`,
       )
       .join("") + (t.length > 150 ? `<div class="m">${tl("f.more", { n: t.length - 150 })}</div>` : ""),
   );
@@ -2136,7 +2228,7 @@ function rAl() {
       const o = aEff(n, s, a);
       return (
         (e += o),
-        `<div class="card"><div class="row"><span><b>${n}</b><div class="m">${s} · Lv ${a}</div></span><span><b class="e">${fmt(o)}</b> <button class="s" onclick="al.splice(${i},1);sv('al',al);rAl()">✕</button></span></div><div class="it">${kbRows(aVals(n, s, a)) || '<div class="m">keine Kampfwerte</div>'}</div></div>`
+        `<div class="card"><div class="row"><span><b>${n}</b><div class="m">${rt(s)} · Lv ${a}</div></span><span><b class="e">${fmt(o)}</b> <button class="s" onclick="al.splice(${i},1);sv('al',al);rAl()">✕</button></span></div><div class="it">${kbRows(aVals(n, s, a)) + axRows(n, s, a) || `<div class="m">${tl("f.noBonus")}</div>`}</div></div>`
       );
     })
     .join("");
