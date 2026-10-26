@@ -143,7 +143,7 @@ h2.section {
 }
 .sn-row {
   display: grid;
-  grid-template-columns: 72px repeat(4, 1fr);
+  grid-template-columns: 72px repeat(4, 1fr) 64px;
   gap: 4px;
   align-items: center;
   margin-bottom: 4px;
@@ -554,6 +554,7 @@ body.fe #lgSel {
   cursor: pointer;
 }
 
+.sn-x { text-align: right; color: var(--accent2); font-weight: 600; font-size: 0.8rem; }
 </style>
 </head>
 <body>
@@ -1190,7 +1191,7 @@ function getRow(a, e) {
     "lg.buildings": {"en": "Buildings & levels", "de": "Bauwerke & Stufen"},
     "lg.recalc": {"en": "Recalculate", "de": "Neu berechnen"},
     "lg.sniper": {"en": "🎯 Sniper offset", "de": "🎯 Sniper-Ausgleich"},
-    "lg.sniperHelp": {"en": "Enter the FP already paid in per place. Needed = place − paid in (never below 0).", "de": "Eingezahlte FP je Platz eintragen. Benötigt = Platz − eingezahlt (nie unter 0)."},
+    "lg.sniperHelp": {"en": "Enter the FP already paid in per place. Right: extra deposit needed = place − paid in (never below 0).", "de": "Eingezahlte FP je Platz eintragen. Benötigt = Platz − eingezahlt (nie unter 0)."},
     "lg.groups": {"en": "Manage groups", "de": "Gruppen verwalten"},
     "lg.groupNamePh": {"en": "New group name (e.g. Support team 2)", "de": "Name neue Gruppe (z. B. Förderteam 2)"},
     "lg.addGroup": {"en": "+ Add group", "de": "+ Gruppe hinzufügen"},
@@ -1498,19 +1499,22 @@ function renderSniper() {
   const a = document.getElementById("sniperList");
   a &&
     ((a.innerHTML =
-      '<div class="sn-row sn-h"><span></span><span>P1</span><span>P2</span><span>P3</span><span>P4</span></div>' +
+      '<div class="sn-row sn-h"><span></span><span>P1</span><span>P2</span><span>P3</span><span>P4</span><span class="sn-x">+FP</span></div>' +
       ORDER.map((e) => {
         const t = getRow(e, levels[e]);
         if (!t) return "";
         const n = sniper[e] || [];
-        return `<div class="sn-row"><span>${AB(e)}</span>${[0, 1, 2, 3].map((r) => (t[r] ? `<input type="number" min="0" inputmode="numeric" data-abbr="${e}" data-k="${r}" placeholder="${t[r]}" value="${typeof n[r] == "number" ? n[r] : ""}">` : "<span></span>")).join("")}</div>`;
+        return `<div class="sn-row"><span>${AB(e)}</span>${[0, 1, 2, 3].map((r) => (t[r] ? `<input type="number" min="0" inputmode="numeric" data-abbr="${e}" data-k="${r}" placeholder="${t[r]}" value="${typeof n[r] == "number" ? n[r] : ""}">` : "<span></span>")).join("")}<span class="sn-x" data-need="${e}">${sniperSum(e, 1, 4) ? "+" + sniperSum(e, 1, 4).toLocaleString(LNG == "de" ? "de-DE" : "en-US") : ""}</span></div>`;
       }).join("")),
     a.querySelectorAll("input").forEach((e) => {
       e.addEventListener("input", () => {
         const t = e.dataset.abbr,
           n = +e.dataset.k,
           r = sniper[t] || (sniper[t] = ["", "", "", ""]);
-        ((r[n] = e.value === "" ? "" : parseFloat(e.value)), renderOutput());
+        r[n] = e.value === "" ? "" : parseFloat(e.value);
+        const x = a.querySelector(`[data-need="${t}"]`),
+          v = sniperSum(t, 1, 4);
+        (x && (x.textContent = v ? "+" + v.toLocaleString(LNG == "de" ? "de-DE" : "en-US") : ""), renderOutput());
       });
     }));
 }
