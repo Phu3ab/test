@@ -2025,15 +2025,34 @@ const AX = {
 };
 const rt = (r) => tl("f.rar." + r),
   aty = (t) => (LG == "de" && { military: "Militär", science: "Wissenschaft" }[t]) || t,
-  AXU = { Heavy: "Schwere Einheit", Light: "Leichte Einheit", Ranged: "Fernkämpfer", Artillery: "Artillerie", Fast: "Schnelle Einheit" },
-  AXA = { Contact: "Kontakt", Flying: "Fliegend", MIRV: "MIRV", "Reactive Armor 4": "Reaktivpanzerung 4", Morale: "Moral", Dug: "Eingraben", Poison: "Gift", Frenzy: "Raserei", "Power Shot": "Mega-Schuss", "Close Quarters": "Auge in Auge" };
+  AXU = {
+    Heavy: "Schwere Einheit",
+    Light: "Leichte Einheit",
+    Ranged: "Fernkämpfer",
+    Artillery: "Artillerie",
+    Fast: "Schnelle Einheit",
+  },
+  AXA = {
+    Contact: "Kontakt",
+    Flying: "Fliegend",
+    MIRV: "MIRV",
+    "Reactive Armor 4": "Reaktivpanzerung 4",
+    Morale: "Moral",
+    Dug: "Eingraben",
+    Poison: "Gift",
+    Frenzy: "Raserei",
+    "Power Shot": "Mega-Schuss",
+    "Close Quarters": "Auge in Auge",
+  };
 // Spezialeffekt-Text ins Deutsche (nur bei DE; Namen der Fähigkeiten sind eigene Übersetzungen)
 function axT(x) {
   if (LG != "de") return x;
   let m = /^(\w+) – (\d+)$/.exec(x);
   if (m && AXU[m[1]]) return AXU[m[1]] + " – " + m[2];
   m = /^(.+?) Chance for (?:(GBG|GEX) )?(\w+) x(\d+) – (\d+)$/.exec(x);
-  return m && AXA[m[1]] && AXU[m[3]] ? `${AXA[m[1]]}-Chance für ${m[2] ? (m[2] == "GBG" ? "GG " : "GEx ") : ""}${AXU[m[3]]} x${m[4]} – ${m[5]}` : x;
+  return m && AXA[m[1]] && AXU[m[3]]
+    ? `${AXA[m[1]]}-Chance für ${m[2] ? (m[2] == "GBG" ? "GG " : "GEx ") : ""}${AXU[m[3]]} x${m[4]} – ${m[5]}`
+    : x;
 }
 const AXK = { "Unit Type": "f.al.spUt", "Unit Type NextEra": "f.al.spUtN", "Ally Ability": "f.al.spAb" };
 function axRows(n, r, l) {
@@ -2201,7 +2220,13 @@ function lM() {
   const e = aq.toLowerCase(),
     t = A.m
       .map((n) => [n, Object.entries(n[8]).reduce((s, [a, i]) => s + W[a] * i * n[6], 0)])
-      .filter(([n]) => !e || (n[0] + " " + trn(n[0]) + " " + n[2] + " " + rt(n[2]) + " " + n[1] + " " + aty(n[1])).toLowerCase().includes(e))
+      .filter(
+        ([n]) =>
+          !e ||
+          (n[0] + " " + trn(n[0]) + " " + n[2] + " " + rt(n[2]) + " " + n[1] + " " + aty(n[1]))
+            .toLowerCase()
+            .includes(e),
+      )
       .sort((n, s) => s[1] - n[1]);
   setHtml(
     $("#al2"),

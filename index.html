@@ -554,7 +554,30 @@ body.fe #lgSel {
   cursor: pointer;
 }
 
-.sn-x { text-align: right; color: var(--accent2); font-weight: 600; font-size: 0.8rem; }
+.sn-x {
+  text-align: right;
+  color: var(--accent2);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.group-output-title .lvlline {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.num.cpd::after {
+  content: " ✓";
+  color: #4caf50;
+  font-weight: 700;
+}
+.copybtn.dup {
+  background: #e65100;
+  border-color: #e65100;
+  color: #fff;
+}
 </style>
 </head>
 <body>
@@ -1236,6 +1259,7 @@ function getRow(a, e) {
     "lg.contribParts": {"en": "Contribution ({r})", "de": "Beitrag ({r})"},
     "lg.copyContrib": {"en": "📋 Copy contribution", "de": "📋 Beitrag kopieren"},
     "lg.copyContribParts": {"en": "📋 Copy contribution ({r})", "de": "📋 Beitrag ({r}) kopieren"},
+    "lg.dupCopy": {"en": "⚠ Already copied – forgot +1?", "de": "⚠ Schon kopiert – +1 vergessen?"},
     "lg.noBuildings": {"en": "No buildings in this group", "de": "Keine Bauwerke in dieser Gruppe"},
     "lg.noPlaces": {"en": "No places selected", "de": "Keine Plätze gewählt"},
     "lg.status": {"en": "Status: {x}", "de": "Stand: {x}"},
@@ -1689,17 +1713,31 @@ function fallbackCopy(a) {
   }
   return (document.body.removeChild(e), t);
 }
-function wireCopyButton(a, e) {
+const copyMarks = {};
+function grpSig(r) {
+  return r.map((p) => p + levels[p]).join(",");
+}
+function wireCopyButton(a, e, sig) {
   const t = document.getElementById(a);
+  const base = t ? t.textContent : "",
+    marked = () => sig !== undefined && copyMarks[a] === sig;
+  t && marked() && (t.textContent = "✓ " + base);
   t &&
     t.addEventListener("click", () => {
       const n = document.getElementById(e).innerText,
-        r = t.textContent,
+        r = (marked() ? "✓ " : "") + base,
+        dup = marked(),
         o = () => {
-          ((t.textContent = tl("bk.copied")),
-            setTimeout(() => {
-              t.textContent = r;
-            }, 1500));
+          sig !== undefined && (copyMarks[a] = sig);
+          t.textContent = dup ? tl("lg.dupCopy") : tl("bk.copied");
+          t.classList.toggle("dup", dup);
+          setTimeout(
+            () => {
+              t.classList.remove("dup");
+              t.textContent = (marked() ? "✓ " : "") + base;
+            },
+            dup ? 3000 : 1500,
+          );
         },
         s = () => {
           ((t.textContent = tl("bk.manual")),
@@ -1728,7 +1766,10 @@ function renderGroupOutputs() {
       o = document.createElement("div"),
       s = !!collapsed.groupOutputs[n.id];
     o.className = "panel group-output-panel" + (s ? " collapsed" : "");
+    o.dataset.gid = n.id;
+    o.dataset.sig = grpSig(r);
     const i = `btnplus_${n.id}`,
+      sig = grpSig(r),
       u = parsePlaceGroups(n.placeGroups),
       c = partitionsFromCutoffs(u),
       d = c.length === 1 && c[0][0] === 1 && c[0][1] === 5;
@@ -1765,16 +1806,17 @@ ${h < c.length - 1 ? '<div style="height:18px;border-bottom:1px solid var(--bord
     }),
       (o.innerHTML = `
 <div class="group-output-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-<span><span class="go-arrow">▼</span>${groupName(n.name)} (${tl(r.length === 1 ? "lg.gbOne" : "lg.gbMany", { n: r.length })})</span>
+<span><span class="go-arrow">▼</span>${groupName(n.name)} (${tl(r.length === 1 ? "lg.gbOne" : "lg.gbMany", { n: r.length })})<span class="lvlline">${r.map((p) => AB(p) + " " + levels[p]).join(" · ")}</span></span>
 <button class="secondary plus1" id="${i}" ${r.length ? "" : "disabled"}>+1 (${groupName(n.name)})</button>
 </div>
 <div class="go-body">${l}${gmixHTML(n, r)}</div>
 `),
       a.appendChild(o),
       f.forEach((p) => {
-        wireCopyButton(p.btn2id, p.t2id);
+        wireCopyButton(p.btn2id, p.t2id, sig);
       }),
       wireGMix(o, n, r),
+      markCopied(o),
       o.querySelector(".group-output-title").addEventListener("click", (p) => {
         p.target.closest("button") ||
           ((collapsed.groupOutputs[n.id] = !collapsed.groupOutputs[n.id]),
@@ -1798,6 +1840,35 @@ ${h < c.length - 1 ? '<div style="height:18px;border-bottom:1px solid var(--bord
   t.innerHTML = e.length
     ? e.map((n) => `⚠\uFE0F ${n}`).join("<br>")
     : tl("lg.status", { x: ORDER.map((n) => AB(n) + " " + levels[n]).join(" · ") });
+}
+function numKey(n) {
+  const p = n.closest(".group-output-panel"),
+    o = n.closest(".out");
+  if (!p || !o) return null;
+  return (
+    p.dataset.gid +
+    "|" +
+    [...p.querySelectorAll(".out")].indexOf(o) +
+    ":" +
+    [...o.querySelectorAll(".num")].indexOf(n) +
+    ":" +
+    n.textContent.trim()
+  );
+}
+function markCopied(p) {
+  p.querySelectorAll(".out .num").forEach((n) => {
+    const k = numKey(n);
+    n.classList.toggle("cpd", !!k && copyMarks[k] === p.dataset.sig);
+  });
+}
+function lgCopyCheck(n) {
+  const k = numKey(n);
+  if (!k) return !1;
+  const sig = n.closest(".group-output-panel").dataset.sig,
+    dup = copyMarks[k] === sig;
+  copyMarks[k] = sig;
+  n.classList.add("cpd");
+  return dup;
 }
 function renderOutput() {
   renderGroupOutputs();
@@ -2706,7 +2777,7 @@ try {
     sx = 0,
     sy = 0,
     hold = 0;
-  function toast(m) {
+  function toast(m, warn) {
     var t = document.getElementById("cpToast");
     if (!t) {
       t = document.createElement("div");
@@ -2716,16 +2787,17 @@ try {
       document.body.appendChild(t);
     }
     t.textContent = m;
+    t.style.background = warn ? "#e65100" : "#2e7d32";
     t.style.opacity = 1;
     clearTimeout(t.__t);
     t.__t = setTimeout(function () {
       t.style.opacity = 0;
     }, 1400);
   }
-  function copy(v, el) {
+  function copy(v, el, dup) {
     var ok = function () {
       var de = typeof LNG !== "undefined" && LNG === "de";
-      toast((de ? "Kopiert: " : "Copied: ") + v);
+      dup ? toast(tl("lg.dupCopy"), 1) : toast((de ? "Kopiert: " : "Copied: ") + v);
       if (el) {
         el.style.outline = "2px solid #4caf50";
         setTimeout(function () {
@@ -2762,7 +2834,7 @@ try {
         tm = 0;
         hold = 1;
         var v = (n.textContent || "").trim();
-        v && copy(v, n);
+        v && copy(v, n, typeof lgCopyCheck == "function" && lgCopyCheck(n));
       }, 500);
     },
     true,
