@@ -1713,7 +1713,25 @@ function fallbackCopy(a) {
   }
   return (document.body.removeChild(e), t);
 }
-const copyMarks = {};
+// Kopier-Häkchen bleiben nach dem Schließen der App erhalten (localStorage)
+const copyMarks = new Proxy(
+  (() => {
+    try {
+      return JSON.parse(localStorage.getItem("lg-copymarks")) || {};
+    } catch {
+      return {};
+    }
+  })(),
+  {
+    set(t, k, v) {
+      t[k] = v;
+      try {
+        localStorage.setItem("lg-copymarks", JSON.stringify(t));
+      } catch {}
+      return true;
+    },
+  },
+);
 function grpSig(r) {
   return r.map((p) => p + levels[p]).join(",");
 }

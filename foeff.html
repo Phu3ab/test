@@ -251,7 +251,6 @@ h2 {
     "f.resetDefault": {"en": "Reset to default", "de": "Auf Standard zurücksetzen"},
     "f.w.save": {"en": "Save weights", "de": "Gewichtung speichern"},
     "f.w.discard": {"en": "Discard changes", "de": "Änderungen verwerfen"},
-    "f.w.hint": {"en": "Changes apply right away but are only kept permanently (and in the backup) after “Save weights”.", "de": "Änderungen wirken sofort, bleiben aber erst nach „Gewichtung speichern“ dauerhaft (und in der Sicherung)."},
     "f.w.discardConfirm": {"en": "Discard unsaved changes and restore the saved weights?", "de": "Nicht gespeicherte Änderungen verwerfen und gespeicherte Gewichtung wiederherstellen?"},
     "f.w.resetConfirm": {"en": "Reset all weights to default? (Only permanent after saving.)", "de": "Alle Gewichte auf Standard setzen? (Dauerhaft erst nach Speichern.)"},
     "f.w.saveConfirm": {"en": "Save the current weights permanently? The previous saved weights will be overwritten.", "de": "Aktuelle Gewichtung dauerhaft speichern? Die bisher gespeicherte wird überschrieben."},
@@ -1038,7 +1037,7 @@ const inames = () =>
 function vW() {
   setHtml(
     $("#v"),
-    `<button class="s" id="rs">${tl("f.resetDefault")}</button> <button class="s" id="ws">${tl("f.w.save")}</button> <button class="s" id="wl">${tl("f.w.discard")}</button><div class="m" style="margin-top:6px">${tl("f.w.hint")}</div><div class="g" style="margin-top:10px">` +
+    `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="s" id="rs">${tl("f.resetDefault")}</button><button class="s" id="ws">${tl("f.w.save")}</button><button class="s" id="wl">${tl("f.w.discard")}</button></div><div class="g" style="margin-top:10px">` +
       D.labels
         .map((t, n) => `<span>${t}</span><input type="number" step="any" data-i="${n}" value="${W[n]}">`)
         .join("") +
@@ -2316,12 +2315,13 @@ function kitIndex() {
       m.get(k).push({ i, en: n[0], de: n[1] || n[0], ev: b[3], amt: kitAmt(x[2]), raw: x[2], orig: x[1] });
     }
   });
-  // Upgrade-Kits ausblenden: kein „Selection Kit“ im Namen, kein bekannter Inhalt und überall Menge „x/150“
+  // Kein Auswahl-Kit: ohne „Selection Kit“ im Namen und ohne erfassten Inhalt, dazu Erhabene, Pendragon, Plus/Reno/Selbsthilfe oder überall „x/150“
   for (const [k, src] of [...m])
     if (
       !/Selection Kit/.test(k) &&
       !(window.KC && (window.KC[k] || src.some((s) => window.KC[s.orig]))) &&
-      src.every((s) => /\/150$/.test(s.raw))
+      (/Upgrade Kit$|^Ascended |Pendragon|^(Mass )?Self-Aid Kit$|^One Up Kit$|^Renovation Kit$/.test(k) ||
+        src.every((s) => /\/150$/.test(s.raw)))
     )
       m.delete(k);
   return (kitIdx = m);
