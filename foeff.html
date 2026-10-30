@@ -243,18 +243,23 @@ h2 {
     "f.s.name": {"en": "Name", "de": "Name"},
     "f.s.area": {"en": "Area", "de": "Fläche"},
     "f.s.itemVal": {"en": "Item value", "de": "Item-Wert"},
+    "f.s.sel": {"en": "Selected stats / area", "de": "Gewählte Stats / Fläche"},
+    "f.s.stats": {"en": "Stats", "de": "Stats"},
+    "f.s.clear": {"en": "Clear", "de": "Leeren"},
+    "f.s.done": {"en": "Done", "de": "Fertig"},
+    "f.s.g0": {"en": "Production & goods", "de": "Produktion & Güter"},
+    "f.s.g1": {"en": "Coins, supplies & more", "de": "Münzen, Vorräte & mehr"},
+    "f.s.g2": {"en": "Population & happiness", "de": "Bevölkerung & Zufriedenheit"},
+    "f.s.g3": {"en": "Combat", "de": "Kampf"},
+    "f.s.g4": {"en": "Quantum", "de": "Quanten"},
     "f.sort": {"en": "Sort:", "de": "Sortieren:"},
     "f.reverse": {"en": "Reverse order", "de": "Reihenfolge umkehren"},
     "f.street": {"en": "street", "de": "Straße"},
     "f.more": {"en": "{n} more – refine your search", "de": "{n} weitere – Suche verfeinern"},
     "f.nothing": {"en": "Nothing found.", "de": "Nichts gefunden."},
-    "f.resetDefault": {"en": "Reset to default", "de": "Auf Standard zurücksetzen"},
-    "f.w.save": {"en": "Save weights", "de": "Gewichtung speichern"},
+    "f.w.save": {"en": "Set as default", "de": "Standard festlegen"},
     "f.w.discard": {"en": "Discard changes", "de": "Änderungen verwerfen"},
-    "f.w.discardConfirm": {"en": "Discard unsaved changes and restore the saved weights?", "de": "Nicht gespeicherte Änderungen verwerfen und gespeicherte Gewichtung wiederherstellen?"},
-    "f.w.resetConfirm": {"en": "Reset all weights to default? (Only permanent after saving.)", "de": "Alle Gewichte auf Standard setzen? (Dauerhaft erst nach Speichern.)"},
-    "f.w.saveConfirm": {"en": "Save the current weights permanently? The previous saved weights will be overwritten.", "de": "Aktuelle Gewichtung dauerhaft speichern? Die bisher gespeicherte wird überschrieben."},
-    "f.w.saved": {"en": "Saved.", "de": "Gespeichert."},
+    "f.w.saveConfirm": {"en": "Set the current weights as the default?", "de": "Aktuelle Gewichtung als Standard festlegen?"},
     "f.ph.itemSearch": {"en": "Search item …", "de": "Item suchen …"},
     "f.gbgAtk": {"en": "GBG attack bonus (%)", "de": "GBG-Angriffsbonus (%)"},
     "f.attComfort": {"en": "Comfortable attrition", "de": "Komfortable Attrition"},
@@ -948,8 +953,14 @@ const skList = () =>
       );
     })()),
   SKL = (e) =>
-    ({ e: tl("f.s.eff"), t: tl("f.s.total"), n: tl("f.s.name"), a: tl("f.s.area"), i: tl("f.s.itemVal") })[e] ||
-    D.labels[e.slice(1)],
+    ({
+      e: tl("f.s.eff"),
+      t: tl("f.s.total"),
+      n: tl("f.s.name"),
+      a: tl("f.s.area"),
+      i: tl("f.s.itemVal"),
+      s: tl("f.s.sel"),
+    })[e] || D.labels[e.slice(1)],
   skv = (e, t, n = 1) =>
     t == "e"
       ? eff(e)
@@ -961,7 +972,15 @@ const skList = () =>
             ? area(e)
             : t == "i"
               ? n * iv(e)
-              : n * (ev(e)[t.slice(1)] || 0),
+              : t == "s"
+                ? area(e)
+                  ? ssel().reduce((a, k) => a + (ev(e)[k] || 0), 0) / area(e)
+                  : 0
+                : t == "s"
+                  ? area(e)
+                    ? ssel().reduce((a, k) => a + (ev(e)[k] || 0), 0) / area(e)
+                    : 0
+                  : n * (ev(e)[t.slice(1)] || 0),
   skc = (e, t) => (n, s) => {
     const a = n[1],
       i = s[1],
@@ -974,8 +993,21 @@ const skList = () =>
   },
   skx = (e, t) => (e == "e" || e == "n" ? "" : ` · ${SKL(e)}: ${fmt(t)}`),
   skUI = (e) =>
-    `<div class="row" style="gap:6px;margin:6px 0"><select id="sk${e}" style="flex:1">${["e", "t", "n", "a", "i", ...skList().map((t) => "r" + t)].map((t) => `<option value="${t}"${t == ls("sk:" + e, "e") ? " selected" : ""}>${tl("f.sort")} ${SKL(t)}</option>`).join("")}</select><button class="s" id="sd${e}" title="${tl("f.reverse")}">${ls("sd:" + e, 0) ? "↑" : "↓"}</button></div>`,
+    `<div class="row" style="gap:6px;margin:6px 0"><select id="sk${e}" style="flex:1">${["e", "t", "n", "a", "i", ...(e == "eff" && ssel().length ? ["s"] : []), ...skList().map((t) => "r" + t)].map((t) => `<option value="${t}"${t == ls("sk:" + e, "e") ? " selected" : ""}>${tl("f.sort")} ${SKL(t)}</option>`).join("")}</select><button class="s" id="sd${e}" title="${tl("f.reverse")}">${ls("sd:" + e, 0) ? "↑" : "↓"}</button>${e == "eff" ? `<button class="s" id="stb">${tl("f.s.stats")}${ssel().length ? " (" + ssel().length + ")" : ""}</button>` : ""}</div>${e == "eff" && ssel().length ? `<div id="stc" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0">${schips()}</div>` : ""}`,
   skBind = (e, t) => {
+    if (e == "eff") {
+      $("#stb").onclick = statSheet;
+      $("#stc") &&
+        ($("#stc").onclick = (n) => {
+          const k = +n.target.dataset.k;
+          if (isNaN(k)) return;
+          sv(
+            "ssel",
+            ssel().filter((x) => x != k),
+          );
+          (ssel().length || ls("sk:eff", "e") != "s" || sv("sk:eff", "e"), vEff());
+        });
+    }
     (($("#sk" + e).onchange = (n) => {
       (sv("sk:" + e, n.target.value), t());
     }),
@@ -984,6 +1016,81 @@ const skList = () =>
         (sv("sd:" + e, s), (n.target.textContent = s ? "↑" : "↓"), t());
       }));
   };
+const ssel = () => ls("ssel", []),
+  SGR = [
+    ["f.s.g0", (i) => i <= 12],
+    ["f.s.g1", (i) => i >= 13 && i <= 21],
+    ["f.s.g2", (i) => i == 22 || i == 23],
+    ["f.s.g3", (i) => i >= 24 && i <= 47],
+    ["f.s.g4", (i) => i >= 48 && i <= 55],
+  ],
+  schips = () =>
+    ssel()
+      .map(
+        (k) =>
+          `<span class="s" data-k="${k}" style="padding:4px 10px;border-radius:12px;cursor:pointer">${esc(D.labels[k] || k)} ✕</span>`,
+      )
+      .join("");
+function statSheet() {
+  const a = document.createElement("div");
+  a.style.cssText =
+    "position:fixed;inset:0;background:#0009;z-index:20;display:flex;align-items:flex-end;justify-content:center";
+  const ids = skList().filter((i) => D.labels[i] != null);
+  const draw = () => {
+    const f = $("#ssq").value.toLowerCase(),
+      sel = new Set(ssel());
+    setHtml(
+      $("#ssl"),
+      SGR.map(([g, fn]) => {
+        const r = ids.filter(
+          (i) => fn(i) && (!f || D.labels[i].toLowerCase().includes(f) || trn(D.labels[i]).toLowerCase().includes(f)),
+        );
+        return r.length
+          ? `<h2>${tl(g)}</h2>` +
+              r
+                .map(
+                  (i) =>
+                    `<label class="row" style="cursor:pointer"><span>${esc(D.labels[i])}</span><input type="checkbox" style="width:auto" data-k="${i}"${sel.has(i) ? " checked" : ""}></label>`,
+                )
+                .join("")
+          : "";
+      }).join(""),
+    );
+    setHtml($("#ssc"), schips());
+  };
+  setHtml(
+    a,
+    `<div class="card" style="width:100%;max-width:600px;max-height:85vh;overflow:auto;margin:0;border-radius:14px 14px 0 0;padding-bottom:calc(14px + env(safe-area-inset-bottom))"><div class="row"><b>${tl("f.s.stats")}</b><span><button class="s" id="ssx">${tl("f.s.clear")}</button> <button class="s" id="ssd">${tl("f.s.done")}</button></span></div><div id="ssc" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0"></div><input id="ssq" type="search" placeholder="${tl("f.ph.search")}"><div id="ssl"></div></div>`,
+  );
+  document.body.appendChild(a);
+  const done = () => {
+    ssel().length ? sv("sk:eff", "s") : ls("sk:eff", "e") == "s" && sv("sk:eff", "e");
+    a.remove();
+    vEff();
+  };
+  a.onclick = (e) => {
+    e.target === a && done();
+  };
+  $("#ssd").onclick = done;
+  $("#ssx").onclick = () => (sv("ssel", []), draw());
+  $("#ssq").oninput = draw;
+  a.onchange = (e) => {
+    const k = +e.target.dataset.k;
+    if (isNaN(k)) return;
+    sv("ssel", e.target.checked ? [...new Set([...ssel(), k])] : ssel().filter((x) => x != k));
+    setHtml($("#ssc"), schips());
+  };
+  $("#ssc").onclick = (e) => {
+    const k = +e.target.dataset.k;
+    if (isNaN(k)) return;
+    sv(
+      "ssel",
+      ssel().filter((x) => x != k),
+    );
+    draw();
+  };
+  draw();
+}
 function list() {
   if (!$("#l")) return;
   const e = q.toLowerCase(),
@@ -1037,7 +1144,7 @@ const inames = () =>
 function vW() {
   setHtml(
     $("#v"),
-    `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="s" id="rs">${tl("f.resetDefault")}</button><button class="s" id="ws">${tl("f.w.save")}</button><button class="s" id="wl">${tl("f.w.discard")}</button></div><div class="g" style="margin-top:10px">` +
+    `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="s" id="ws">${tl("f.w.save")}</button><button class="s" id="wl">${tl("f.w.discard")}</button></div><div class="g" style="margin-top:10px">` +
       D.labels
         .map((t, n) => `<span>${t}</span><input type="number" step="any" data-i="${n}" value="${W[n]}">`)
         .join("") +
@@ -1078,13 +1185,10 @@ function vW() {
       }
     }),
     ($("#ws").onclick = () => {
-      confirm(tl("f.w.saveConfirm")) && (sv("w", W), sv("iw", IWo), alert(tl("f.w.saved")));
+      confirm(tl("f.w.saveConfirm")) && (sv("w", W), sv("iw", IWo));
     }),
     ($("#wl").onclick = () => {
-      confirm(tl("f.w.discardConfirm")) && ((W = ls("w", D.w.slice())), (IWo = ls("iw", {})), draw());
-    }),
-    ($("#rs").onclick = () => {
-      confirm(tl("f.w.resetConfirm")) && ((W = D.w.slice()), (IWo = {}), draw());
+      ((W = ls("w", D.w.slice())), (IWo = ls("iw", {})), draw());
     }));
 }
 function vA() {
