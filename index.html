@@ -21,6 +21,13 @@
   --text: #e8e6df;
   --muted: #8a92a6;
   --border: #333d54;
+  --in: #10141f;
+  --t: var(--text);
+  --b: var(--border);
+  --m: var(--muted);
+  --c: var(--panel);
+  --a: var(--accent);
+  --a2: var(--accent2);
 }
 * {
   box-sizing: border-box;
@@ -477,7 +484,7 @@ body {
 body.fe {
   overflow: hidden;
 }
-body.pl > *:not(#plHost):not(#tabs):not(#feWrap):not(#lgSel) {
+body.pl > *:not(#plHost):not(#tabs):not(#feWrap):not(#lgSel):not(.lgpk) {
   display: none !important;
 }
 #plHost {
@@ -556,7 +563,8 @@ body.pl #plHost {
   padding: 4px 6px;
   font-size: 0.85rem;
 }
-body.fe #lgSel {
+body.fe #lgSel,
+body.fe #lgSel + button.lgpk {
   display: none;
 }
 
@@ -612,6 +620,148 @@ body.fe #lgSel {
   background: #e65100;
   border-color: #e65100;
   color: #fff;
+}
+</style><style>
+/* Gemeinsame Auswahl (js/pick.js). Erwartet die Variablen --in --t --b --m --c --a --a2 der Seite. */
+button.pk {
+  background: var(--in);
+  color: var(--t);
+  border: 1px solid var(--b);
+  border-radius: 8px;
+  padding: 8px 26px 8px 10px;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+button.pk::after {
+  content: "▾";
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--m);
+}
+.pkov {
+  position: fixed;
+  inset: 0;
+  background: #0009;
+  z-index: 30;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.pksh {
+  width: 100%;
+  max-width: 600px;
+  max-height: 85vh;
+  overflow: auto;
+  margin: 0;
+  border-radius: 14px 14px 0 0;
+  padding-top: 0;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom));
+}
+.pkh {
+  position: sticky;
+  top: 0;
+  background: var(--c);
+  padding: 12px 0 6px;
+  z-index: 1;
+}
+.pkr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--b);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.pkr.on {
+  color: var(--a2);
+  font-weight: 600;
+}
+.pkr .ck {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--m);
+  border-radius: 50%;
+  position: relative;
+}
+.pkr.mu .ck {
+  border-radius: 5px;
+}
+.pkr.on .ck {
+  background: var(--a2);
+  border-color: var(--a2);
+}
+.pkr.on .ck::after {
+  content: "✓";
+  position: absolute;
+  inset: 0;
+  text-align: center;
+  line-height: 18px;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 700;
+  color: #10141f;
+}
+.pkt {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.pkn {
+  color: var(--m);
+  padding: 10px 4px;
+}
+.pkh .pkt button.s {
+  background: var(--a);
+  color: #1a1f2e;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: inherit;
+  font-weight: 600;
+}
+.pksh h2 {
+  font-size: 1rem;
+  margin: 14px 0 4px;
+  color: var(--a2);
+}
+.pksh.card {
+  background: var(--c);
+  border: 1px solid var(--b);
+  color: var(--t);
+  padding-left: 12px;
+  padding-right: 12px;
+}
+/* Sprachwahl: auf jeder Seite gleiche Position und Größe (oben rechts) */
+button.lgpk {
+  position: fixed;
+  top: 8px;
+  right: 10px;
+  z-index: 30;
+  width: 58px;
+  height: 30px;
+  margin: 0;
+  padding: 0 18px 0 9px;
+  font-size: 0.85rem;
+  line-height: 28px;
+  border-radius: 6px;
+}
+button.lgpk::after {
+  right: 7px;
+}
+.pkov {
+  z-index: 3000;
 }
 </style>
 </head>
@@ -2852,6 +3002,116 @@ try {
     }));
 </script>
 <script>
+// Gemeinsame Auswahl im App-Design (Bottom-Sheet) für foeff.html und city.html statt der Browser-Dialoge.
+// Jede Seite definiert vorher PKL = () => ({done, ph, none}) (Texte der aktuellen Sprache).
+// pkOpen = Sheet (einfach oder mehrfach); enhSel(root) ersetzt <select> im Teilbaum durch einen Knopf, der das Sheet öffnet.
+// Werte, change-Ereignis und Programmzugriffe (value, innerHTML, selectedIndex) bleiben die des versteckten select.
+const pkEsc = (e) =>
+  String(e).replace(/[&<>"]/g, (t) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[t]);
+function pkOpen(o) {
+  const L = PKL(),
+    q = (s) => document.querySelector(s),
+    a = document.createElement("div");
+  a.className = "pkov";
+  const many = o.items.length > 14,
+    draw = () => {
+      const f = (q("#pkq") ? q("#pkq").value : "").trim().toLowerCase(),
+        row = (v, t, all) =>
+          `<div class="pkr${o.sel(v, all) ? " on" : ""}${o.multi ? " mu" : ""}" data-v="${pkEsc(v)}"${all ? ' data-all="1"' : ""}><span>${pkEsc(t)}</span><i class="ck"></i></div>`;
+      let g = null,
+        h = o.all && !f ? row("", o.all, true) : "";
+      for (const [v, t, grp] of o.items) {
+        if (f && !t.toLowerCase().includes(f)) continue;
+        grp !== g && ((g = grp), grp && (h += `<h2>${pkEsc(grp)}</h2>`));
+        h += row(v, t);
+      }
+      q("#pkl").innerHTML = h || `<div class="pkn">${pkEsc(L.none)}</div>`;
+    };
+  a.innerHTML = `<div class="card pksh"><div class="pkh"><div class="pkt"><b>${pkEsc(o.title || "")}</b>${o.multi ? `<button class="s" id="pkd">${pkEsc(L.done)}</button>` : ""}</div>${many ? `<input id="pkq" type="search" placeholder="${pkEsc(L.ph)}" style="margin-top:8px;width:100%">` : ""}</div><div id="pkl"></div></div>`;
+  document.body.appendChild(a);
+  draw();
+  const sc = a.querySelector(".pksh"),
+    cur = a.querySelector(".pkr.on:not([data-all])");
+  cur && !o.multi && (sc.scrollTop = Math.max(0, cur.offsetTop - 140));
+  a.onclick = (e) => {
+    if (e.target === a || e.target.id == "pkd") return a.remove();
+    const r = e.target.closest(".pkr");
+    if (!r) return;
+    o.pick(r.dataset.v, !!r.dataset.all);
+    if (o.multi) {
+      const y = sc.scrollTop;
+      draw();
+      sc.scrollTop = y;
+    } else a.remove();
+  };
+  q("#pkq") && (q("#pkq").oninput = draw);
+}
+function pkLabel(s) {
+  const o = s.options[s.selectedIndex];
+  s._pk.textContent = o ? o.text : "";
+}
+// Alle erweiterten select neu beschriften (nach Sprachwechsel)
+function pkSync() {
+  document.querySelectorAll("select").forEach((s) => s._pk && pkLabel(s));
+}
+function enhSel(root, sel) {
+  (root || document).querySelectorAll(sel || "select").forEach((s) => {
+    if (s._pk) return pkLabel(s);
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "pk" + (/^(lgSel|lgs|lg)$/.test(s.id) ? " lgpk" : "");
+    if (!/^(lgSel|lgs|lg)$/.test(s.id)) {
+      b.style.cssText = s.style.cssText;
+      b.style.paddingRight = "24px";
+    }
+    b.title = s.title || "";
+    s.style.display = "none";
+    s.after(b);
+    s._pk = b;
+    // Programmzugriffe auf value/innerHTML/selectedIndex halten den Knopf aktuell
+    for (const [P, k] of [
+      [HTMLSelectElement.prototype, "value"],
+      [HTMLSelectElement.prototype, "selectedIndex"],
+      [Element.prototype, "innerHTML"],
+    ]) {
+      const d = Object.getOwnPropertyDescriptor(P, k);
+      Object.defineProperty(s, k, {
+        configurable: true,
+        get() {
+          return d.get.call(this);
+        },
+        set(v) {
+          d.set.call(this, v);
+          pkLabel(this);
+        },
+      });
+    }
+    pkLabel(s);
+    s.addEventListener("change", () => pkLabel(s));
+    b.onclick = () => {
+      const pre = s.dataset.strip ? PKL().sort + " " : "",
+        items = [...s.children].flatMap((c) =>
+          c.tagName == "OPTGROUP"
+            ? [...c.children].map((p) => [p.value, p.text.replace(pre, ""), c.label])
+            : [[c.value, c.text.replace(pre, ""), ""]],
+        );
+      pkOpen({
+        title: s.dataset.t || s.title || "",
+        items,
+        sel: (v) => v == s.value,
+        pick: (v) => {
+          s.value = v;
+          s.dispatchEvent(new Event("change"));
+        },
+      });
+    };
+  });
+}
+</script><script>
+// LG-Rechner/Powerlevel: Sprachwahl im App-Design (gemeinsame Auswahl js/pick.js)
+const PKL = () => ({ done: "OK", ph: "", none: "", sort: "" });
+enhSel(document, "#lgSel");
+</script><script>
 (function () {
   var css = ".num{cursor:copy;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}";
   var st = document.createElement("style");
