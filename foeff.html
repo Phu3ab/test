@@ -171,6 +171,97 @@ h2 {
 .kg {
   color: #f1c232;
 }
+
+/* Eigene Auswahl (Sortieren, Jahr, Event, Verbündete) */
+button.pk {
+  background: var(--in);
+  color: var(--t);
+  border: 1px solid var(--b);
+  border-radius: 8px;
+  padding: 8px 26px 8px 10px;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+button.pk::after {
+  content: "▾";
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--m);
+}
+.pkov {
+  position: fixed;
+  inset: 0;
+  background: #0009;
+  z-index: 30;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.pksh {
+  width: 100%;
+  max-width: 600px;
+  max-height: 85vh;
+  overflow: auto;
+  margin: 0;
+  border-radius: 14px 14px 0 0;
+  padding-top: 0;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom));
+}
+.pkh {
+  position: sticky;
+  top: 0;
+  background: var(--c);
+  padding: 12px 0 6px;
+  z-index: 1;
+}
+.pkr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--b);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.pkr.on {
+  color: var(--a2);
+  font-weight: 600;
+}
+.pkr .ck {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--m);
+  border-radius: 50%;
+  position: relative;
+}
+.pkr.mu .ck {
+  border-radius: 5px;
+}
+.pkr.on .ck {
+  background: var(--a2);
+  border-color: var(--a2);
+}
+.pkr.on .ck::after {
+  content: "✓";
+  position: absolute;
+  inset: 0;
+  text-align: center;
+  line-height: 18px;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 700;
+  color: #10141f;
+}
 </style></head><body>
 <header><h1 style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="white-space:nowrap">📈 FoEfficiency</span><span style="display:flex;gap:6px;min-width:0"><select id="era" title="Zeitalter" data-i18n-title="f.era" style="width:auto;min-width:0;max-width:34vw;padding:4px 6px;font-size:.8rem;text-overflow:ellipsis"></select><select id="lg" style="width:auto;padding:4px 6px"><option value="de">DE</option><option value="en">EN</option></select></span></h1><nav id="nav"></nav></header><main id="v"></main>
 <script src="foeff-data.js"></script><script>
@@ -236,6 +327,8 @@ h2 {
     "f.noValues": {"en": "No values.", "de": "Keine Werte."},
     "f.effByEra": {"en": "Efficiency by era", "de": "Effizienz nach Zeitalter"},
     "f.allEvents": {"en": "All events", "de": "Alle Events"},
+    "f.event": {"en": "Event", "de": "Event"},
+    "f.year": {"en": "Year", "de": "Jahr"},
     "f.allYears": {"en": "All years", "de": "Alle Jahre"},
     "f.noTimed": {"en": "Without time-limited buildings", "de": "Ohne zeitbegrenzte Gebäude"},
     "f.s.eff": {"en": "Efficiency", "de": "Effizienz"},
@@ -245,6 +338,7 @@ h2 {
     "f.s.itemVal": {"en": "Item value", "de": "Item-Wert"},
     "f.s.sel": {"en": "Selected stats / area", "de": "Gewählte Stats / Fläche"},
     "f.s.stats": {"en": "Stats", "de": "Stats"},
+    "f.s.items": {"en": "Items", "de": "Items"},
     "f.s.clear": {"en": "Clear", "de": "Leeren"},
     "f.s.done": {"en": "Done", "de": "Fertig"},
     "f.s.g0": {"en": "Production & goods", "de": "Produktion & Güter"},
@@ -875,13 +969,14 @@ function drw() {
       w: vW,
       a: vA,
     }[tab](),
+    enhSel(),
     scrollTo(0, 0));
 }
 let qT = 0;
 function vEff() {
   (setHtml(
     $("#v"),
-    `<input id="q" type="search" placeholder="${tl("f.ph.search")}" value="${q}">${evUI()}${skUI("eff")}<div id="l"></div>`,
+    `<input id="q" type="search" placeholder="${tl("f.ph.search")}" value="${q}">${evUI()[0]}${skUI("eff")}${evUI()[1]}<div id="l"></div>`,
   ),
     ($("#q").oninput = (e) => {
       q = e.target.value;
@@ -890,7 +985,8 @@ function vEff() {
     }),
     skBind("eff", list),
     evBind(list),
-    list());
+    list(),
+    enhSel());
 }
 </script><script>
 // Tab „Gebäude“ (vEff): Event-, Jahres- und Skill-Filter, Liste
@@ -907,11 +1003,16 @@ const evK = (e) => (e[3] || "").replace(/\s*\d{4}$/, ""),
           .filter(Boolean),
       ),
     ].sort((e, t) => evN(e).localeCompare(evN(t), "de")),
+  // gewählte Events (Mehrfachauswahl); alte Speicherung war ein einzelner Name
+  fevL = () => {
+    const v = ls("fev", []);
+    return Array.isArray(v) ? v : v ? [v] : [];
+  },
   yrList = (e) =>
     [
       ...new Set(
         D.b
-          .filter((t) => !isHid(t) && (!e || evK(t) == e))
+          .filter((t) => !isHid(t) && (!e.length || e.includes(evK(t))))
           .map(yrK)
           .filter(Boolean),
       ),
@@ -919,24 +1020,69 @@ const evK = (e) => (e[3] || "").replace(/\s*\d{4}$/, ""),
   fopt = (e, t, n) =>
     `<option value="">${e}</option>` +
     t.map((s) => `<option value="${esc(s)}"${s == n ? " selected" : ""}>${esc(s)}</option>`).join(""),
+  evLabel = () => {
+    const e = fevL();
+    return e.length ? evN(e[0]) + (e.length > 1 ? ` +${e.length - 1}` : "") : tl("f.allEvents");
+  },
   evUI = () => {
-    const e = ls("fev", "");
-    return `<div class="row" style="gap:6px;margin:6px 0"><select id="fev" style="flex:2">${fopt(tl("f.allEvents"), evList(), e)}</select><select id="fyr" style="flex:1">${fopt(tl("f.allYears"), yrList(e), ls("fyr", ""))}</select></div><label class="m" style="display:flex;align-items:center;gap:8px;margin:4px 0"><input type="checkbox" id="fnl" style="width:20px;height:20px;flex:none;margin:0"${ls("fnl", 0) ? " checked" : ""}> ${tl("f.noTimed")}</label>`;
+    const e = fevL();
+    return [
+      `<div class="row" style="gap:6px;margin:6px 0"><button type="button" class="pk" id="fev" style="flex:2">${esc(evLabel())}</button><select id="fyr" data-t="f.year" style="flex:1">${fopt(tl("f.allYears"), yrList(e), ls("fyr", ""))}</select></div>`,
+      `<label class="m" style="display:flex;align-items:center;gap:8px;margin:4px 0"><input type="checkbox" id="fnl" style="width:20px;height:20px;flex:none;margin:0"${ls("fnl", 0) ? " checked" : ""}> ${tl("f.noTimed")}</label>`,
+    ];
   },
   evBind = (e) => {
     (($("#fnl").onchange = (t) => {
       (sv("fnl", t.target.checked ? 1 : 0), e());
     }),
-      ($("#fev").onchange = (t) => {
-        const n = t.target.value;
-        (sv("fev", n),
-          yrList(n).includes(ls("fyr", "")) || sv("fyr", ""),
-          setHtml($("#fyr"), fopt(tl("f.allYears"), yrList(n), ls("fyr", ""))),
-          e());
-      }),
+      ($("#fev").onclick = () =>
+        pkOpen({
+          title: tl("f.event"),
+          multi: true,
+          all: tl("f.allEvents"),
+          items: evList().map((x) => [x, evN(x), ""]),
+          sel: (v, all) => (all ? !fevL().length : fevL().includes(v)),
+          pick: (v, all) => {
+            const c = fevL(),
+              n = all ? [] : c.includes(v) ? c.filter((x) => x != v) : [...c, v];
+            (sv("fev", n),
+              yrList(n).includes(ls("fyr", "")) || sv("fyr", ""),
+              setHtml($("#fyr"), fopt(tl("f.allYears"), yrList(n), ls("fyr", ""))),
+              pkLabel($("#fyr")),
+              ($("#fev").textContent = evLabel()),
+              e());
+          },
+        })),
       ($("#fyr").onchange = (t) => {
         (sv("fyr", t.target.value), e());
       }));
+  };
+// Einzelne Items (Kits, Pakete, Beschleuniger …) als Sortier-/Stat-Auswahl: Schlüssel = stem(Name), Menge = Anteil pro Gebäude im gewählten Zeitalter
+const ITRE = /^(.+) – ([\d.]+)(?:\/([\d.]+))?$/;
+let ITI = null;
+const itIndex = () => {
+    if (!ITI) {
+      ITI = new Map();
+      for (const id in IT)
+        for (const l of IT[id]) {
+          const m = ITRE.exec(l);
+          if (!m) continue;
+          const k = stem(m[1]),
+            o = ITI.get(k);
+          (!o || m[1].length < o.length) && ITI.set(k, m[1]);
+        }
+    }
+    return ITI;
+  },
+  itName = (k) => itIndex().get(k) || "",
+  itKeys = () => [...itIndex().keys()].sort((a, b) => trn(itName(a)).localeCompare(trn(itName(b)), LG)),
+  itAmt = (b, k) => {
+    let t = 0;
+    for (const l of iL(b[0], EI) || []) {
+      const m = ITRE.exec(l);
+      m && stem(m[1]) == k && (t += m[3] ? m[2] / m[3] : +m[2]);
+    }
+    return t;
   };
 let SKs = null;
 const skList = () =>
@@ -953,14 +1099,16 @@ const skList = () =>
       );
     })()),
   SKL = (e) =>
-    ({
+    (e.startsWith("i:") ? trn(itName(e.slice(2))) : null) ||
+    {
       e: tl("f.s.eff"),
       t: tl("f.s.total"),
       n: tl("f.s.name"),
       a: tl("f.s.area"),
       i: tl("f.s.itemVal"),
       s: tl("f.s.sel"),
-    })[e] || D.labels[e.slice(1)],
+    }[e] ||
+    D.labels[e.slice(1)],
   skv = (e, t, n = 1) =>
     t == "e"
       ? eff(e)
@@ -974,12 +1122,11 @@ const skList = () =>
               ? n * iv(e)
               : t == "s"
                 ? area(e)
-                  ? ssel().reduce((a, k) => a + (ev(e)[k] || 0), 0) / area(e)
+                  ? (ssel().reduce((a, k) => a + (ev(e)[k] || 0), 0) + isel().reduce((a, k) => a + itAmt(e, k), 0)) /
+                    area(e)
                   : 0
-                : t == "s"
-                  ? area(e)
-                    ? ssel().reduce((a, k) => a + (ev(e)[k] || 0), 0) / area(e)
-                    : 0
+                : t.startsWith("i:")
+                  ? n * itAmt(e, t.slice(2))
                   : n * (ev(e)[t.slice(1)] || 0),
   skc = (e, t) => (n, s) => {
     const a = n[1],
@@ -992,20 +1139,21 @@ const skList = () =>
     return tot(bt(s[0])) - tot(bt(n[0])) || nm(bt(n[0])).localeCompare(nm(bt(s[0])), "de");
   },
   skx = (e, t) => (e == "e" || e == "n" ? "" : ` · ${SKL(e)}: ${fmt(t)}`),
+  skOpt = (e, t) =>
+    `<option value="${t}"${t == ls("sk:" + e, "e") ? " selected" : ""}>${tl("f.sort")} ${SKL(t)}</option>`,
   skUI = (e) =>
-    `<div class="row" style="gap:6px;margin:6px 0"><select id="sk${e}" style="flex:1">${["e", "t", "n", "a", "i", ...(e == "eff" && ssel().length ? ["s"] : []), ...skList().map((t) => "r" + t)].map((t) => `<option value="${t}"${t == ls("sk:" + e, "e") ? " selected" : ""}>${tl("f.sort")} ${SKL(t)}</option>`).join("")}</select><button class="s" id="sd${e}" title="${tl("f.reverse")}">${ls("sd:" + e, 0) ? "↑" : "↓"}</button>${e == "eff" ? `<button class="s" id="stb">${tl("f.s.stats")}${ssel().length ? " (" + ssel().length + ")" : ""}</button>` : ""}</div>${e == "eff" && ssel().length ? `<div id="stc" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0">${schips()}</div>` : ""}`,
+    `<div class="row" style="gap:6px;margin:6px 0"><select id="sk${e}" data-strip="1" data-t="f.sort" style="flex:1">${["e", "t", "n", "a", "i", ...(e == "eff" && selN() ? ["s"] : []), ...skList().map((t) => "r" + t)].map((t) => skOpt(e, t)).join("")}<optgroup label="${tl("f.s.items")}">${itKeys()
+      .map((k) => skOpt(e, "i:" + k))
+      .join(
+        "",
+      )}</optgroup></select><button class="s" id="sd${e}" title="${tl("f.reverse")}">${ls("sd:" + e, 0) ? "↑" : "↓"}</button>${e == "eff" ? `<button class="s" id="stb">${tl("f.s.stats")}${selN() ? " (" + selN() + ")" : ""}</button>` : ""}</div>${e == "eff" && selN() ? `<div id="stc" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0">${schips()}</div>` : ""}`,
   skBind = (e, t) => {
     if (e == "eff") {
       $("#stb").onclick = statSheet;
       $("#stc") &&
         ($("#stc").onclick = (n) => {
-          const k = +n.target.dataset.k;
-          if (isNaN(k)) return;
-          sv(
-            "ssel",
-            ssel().filter((x) => x != k),
-          );
-          (ssel().length || ls("sk:eff", "e") != "s" || sv("sk:eff", "e"), vEff());
+          if (!chipDel(n.target)) return;
+          (selN() || ls("sk:eff", "e") != "s" || sv("sk:eff", "e"), vEff());
         });
     }
     (($("#sk" + e).onchange = (n) => {
@@ -1017,6 +1165,27 @@ const skList = () =>
       }));
   };
 const ssel = () => ls("ssel", []),
+  isel = () => ls("isel", []),
+  selN = () => ssel().length + isel().length,
+  // Chip antippen: Stat (data-k) oder Item (data-it) aus der Auswahl nehmen; false = kein Chip getroffen
+  chipDel = (el) => {
+    if (el.dataset.it != null)
+      return (
+        sv(
+          "isel",
+          isel().filter((x) => x != el.dataset.it),
+        ),
+        true
+      );
+    const k = +el.dataset.k;
+    return isNaN(k)
+      ? false
+      : (sv(
+          "ssel",
+          ssel().filter((x) => x != k),
+        ),
+        true);
+  },
   SGR = [
     ["f.s.g0", (i) => i <= 12],
     ["f.s.g1", (i) => i >= 13 && i <= 21],
@@ -1025,10 +1194,13 @@ const ssel = () => ls("ssel", []),
     ["f.s.g4", (i) => i >= 48 && i <= 55],
   ],
   schips = () =>
-    ssel()
+    [
+      ...ssel().map((k) => [`data-k="${k}"`, D.labels[k] || k]),
+      ...isel().map((k) => [`data-it="${esc(k)}"`, itName(k) || k]),
+    ]
       .map(
-        (k) =>
-          `<span class="s" data-k="${k}" style="padding:4px 10px;border-radius:12px;cursor:pointer">${esc(D.labels[k] || k)} ✕</span>`,
+        ([d, n]) =>
+          `<span class="s" ${d} style="padding:4px 10px;border-radius:12px;cursor:pointer">${esc(n)} ✕</span>`,
       )
       .join("");
 function statSheet() {
@@ -1038,23 +1210,38 @@ function statSheet() {
   const ids = skList().filter((i) => D.labels[i] != null);
   const draw = () => {
     const f = $("#ssq").value.toLowerCase(),
-      sel = new Set(ssel());
+      sel = new Set(ssel()),
+      isl = new Set(isel()),
+      its = itKeys().filter(
+        (k) => !f || itName(k).toLowerCase().includes(f) || trn(itName(k)).toLowerCase().includes(f),
+      );
     setHtml(
       $("#ssl"),
-      SGR.map(([g, fn]) => {
-        const r = ids.filter(
-          (i) => fn(i) && (!f || D.labels[i].toLowerCase().includes(f) || trn(D.labels[i]).toLowerCase().includes(f)),
-        );
-        return r.length
-          ? `<h2>${tl(g)}</h2>` +
-              r
-                .map(
-                  (i) =>
-                    `<label class="row" style="cursor:pointer"><span>${esc(D.labels[i])}</span><input type="checkbox" style="width:auto" data-k="${i}"${sel.has(i) ? " checked" : ""}></label>`,
-                )
-                .join("")
-          : "";
-      }).join(""),
+      [
+        ...SGR.map(([g, fn]) => {
+          const r = ids.filter(
+            (i) => fn(i) && (!f || D.labels[i].toLowerCase().includes(f) || trn(D.labels[i]).toLowerCase().includes(f)),
+          );
+          return r.length
+            ? `<h2>${tl(g)}</h2>` +
+                r
+                  .map(
+                    (i) =>
+                      `<label class="row" style="cursor:pointer"><span>${esc(D.labels[i])}</span><input type="checkbox" style="width:auto" data-k="${i}"${sel.has(i) ? " checked" : ""}></label>`,
+                  )
+                  .join("")
+            : "";
+        }),
+        its.length
+          ? `<h2>${tl("f.s.items")}</h2>` +
+            its
+              .map(
+                (k) =>
+                  `<label class="row" style="cursor:pointer"><span>${esc(itName(k))}</span><input type="checkbox" style="width:auto" data-it="${esc(k)}"${isl.has(k) ? " checked" : ""}></label>`,
+              )
+              .join("")
+          : "",
+      ].join(""),
     );
     setHtml($("#ssc"), schips());
   };
@@ -1064,7 +1251,7 @@ function statSheet() {
   );
   document.body.appendChild(a);
   const done = () => {
-    ssel().length ? sv("sk:eff", "s") : ls("sk:eff", "e") == "s" && sv("sk:eff", "e");
+    selN() ? sv("sk:eff", "s") : ls("sk:eff", "e") == "s" && sv("sk:eff", "e");
     a.remove();
     vEff();
   };
@@ -1072,22 +1259,18 @@ function statSheet() {
     e.target === a && done();
   };
   $("#ssd").onclick = done;
-  $("#ssx").onclick = () => (sv("ssel", []), draw());
+  $("#ssx").onclick = () => (sv("ssel", []), sv("isel", []), draw());
   $("#ssq").oninput = draw;
   a.onchange = (e) => {
-    const k = +e.target.dataset.k;
-    if (isNaN(k)) return;
-    sv("ssel", e.target.checked ? [...new Set([...ssel(), k])] : ssel().filter((x) => x != k));
+    const it = e.target.dataset.it,
+      k = +e.target.dataset.k;
+    if (it != null) sv("isel", e.target.checked ? [...new Set([...isel(), it])] : isel().filter((x) => x != it));
+    else if (isNaN(k)) return;
+    else sv("ssel", e.target.checked ? [...new Set([...ssel(), k])] : ssel().filter((x) => x != k));
     setHtml($("#ssc"), schips());
   };
   $("#ssc").onclick = (e) => {
-    const k = +e.target.dataset.k;
-    if (isNaN(k)) return;
-    sv(
-      "ssel",
-      ssel().filter((x) => x != k),
-    );
-    draw();
+    chipDel(e.target) && draw();
   };
   draw();
 }
@@ -1095,7 +1278,7 @@ function list() {
   if (!$("#l")) return;
   const e = q.toLowerCase(),
     t = ls("sk:eff", "e");
-  const fe = ls("fev", ""),
+  const fe = fevL(),
     fy = ls("fyr", ""),
     nl = ls("fnl", 0),
     sd = ls("sd:eff", 0);
@@ -1103,7 +1286,7 @@ function list() {
     .filter(
       (a) =>
         !isHid(a) &&
-        (!fe || evK(a) == fe) &&
+        (!fe.length || fe.includes(evK(a))) &&
         (!fy || yrK(a) == fy) &&
         (!nl || !/\bL:/.test(a[2])) &&
         (!e || hay(a).includes(e)),
@@ -1402,6 +1585,85 @@ function hay(a) {
   return (HAY[k] = [...t, ...t.map((v) => trn(String(v)))].join(" ").toLowerCase());
 }
 </script><script>
+// Eigene Auswahl (Bottom-Sheet im App-Design) statt der Browser-Dialoge: Sortieren, Jahr, Event, Verbündete.
+// pkOpen = Sheet (einfach oder mehrfach), enhSel = ersetzt <select> durch einen Knopf, der das Sheet öffnet (change-Event bleibt).
+function pkOpen(o) {
+  const a = document.createElement("div");
+  a.className = "pkov";
+  const many = o.items.length > 14,
+    draw = () => {
+      const f = ($("#pkq") ? $("#pkq").value : "").trim().toLowerCase(),
+        row = (v, t, all) =>
+          `<div class="pkr${o.sel(v, all) ? " on" : ""}${o.multi ? " mu" : ""}" data-v="${esc(v)}"${all ? ' data-all="1"' : ""}><span>${esc(t)}</span><i class="ck"></i></div>`;
+      let g = null,
+        h = o.all && !f ? row("", o.all, true) : "";
+      for (const [v, t, grp] of o.items) {
+        if (f && !t.toLowerCase().includes(f)) continue;
+        grp !== g && ((g = grp), grp && (h += `<h2>${esc(grp)}</h2>`));
+        h += row(v, t);
+      }
+      $("#pkl").innerHTML = h || `<div class="m">${tl("f.nothing")}</div>`;
+    };
+  a.innerHTML = `<div class="card pksh"><div class="pkh"><div class="row"><b>${esc(o.title || "")}</b>${o.multi ? `<button class="s" id="pkd">${tl("f.s.done")}</button>` : ""}</div>${many ? `<input id="pkq" type="search" placeholder="${tl("f.ph.search")}" style="margin-top:8px">` : ""}</div><div id="pkl"></div></div>`;
+  document.body.appendChild(a);
+  const close = () => {
+    a.remove();
+    o.close && o.close();
+  };
+  draw();
+  const sc = a.querySelector(".pksh"),
+    cur = a.querySelector(".pkr.on:not([data-all])");
+  cur && !o.multi && (sc.scrollTop = Math.max(0, cur.offsetTop - 140));
+  a.onclick = (e) => {
+    if (e.target === a || e.target.id == "pkd") return close();
+    const r = e.target.closest(".pkr");
+    if (!r) return;
+    o.pick(r.dataset.v, !!r.dataset.all);
+    if (o.multi) {
+      const y = sc.scrollTop;
+      draw();
+      sc.scrollTop = y;
+    } else close();
+  };
+  $("#pkq") && ($("#pkq").oninput = draw);
+}
+// <select> -> Knopf im Design; Werte und change-Ereignis bleiben die des (versteckten) select
+function pkLabel(s) {
+  const o = s.options[s.selectedIndex];
+  s._pk.textContent = o ? o.text : "";
+}
+function enhSel(root) {
+  (root || document).querySelectorAll("#v select").forEach((s) => {
+    if (s._pk) return pkLabel(s);
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "pk";
+    b.style.cssText = s.style.cssText;
+    s.style.display = "none";
+    s.after(b);
+    s._pk = b;
+    pkLabel(s);
+    s.addEventListener("change", () => pkLabel(s));
+    b.onclick = () => {
+      const pre = s.dataset.strip ? tl("f.sort") + " " : "",
+        items = [...s.children].flatMap((c) =>
+          c.tagName == "OPTGROUP"
+            ? [...c.children].map((p) => [p.value, p.text.replace(pre, ""), c.label])
+            : [[c.value, c.text.replace(pre, ""), ""]],
+        );
+      pkOpen({
+        title: s.dataset.t ? tl(s.dataset.t) : "",
+        items,
+        sel: (v) => v == s.value,
+        pick: (v) => {
+          s.value = v;
+          s.dispatchEvent(new Event("change"));
+        },
+      });
+    };
+  });
+}
+</script><script>
 // Tabs „Stadt“ und „Inventar“ (vImp), Import-Bericht (rIm), LG-Abschnitt, Item-Summe
 // Teil 5/8 von foeff-app.js (früher eine Datei); Ladereihenfolge: siehe <script>-Tags in foeff.html.
 function vImp(e, t, n) {
@@ -1685,7 +1947,8 @@ function rIm(e, save) {
           ((u.value = trn(r.dataset.q)), y(), u.scrollIntoView({ block: "center", behavior: "smooth" }));
         }),
     ),
-    y());
+    y(),
+    enhSel());
 }
 
 // Verlauf: bei jedem „Berechnen“/Datei-Import ein Schnappschuss (Anzahl, Fläche, Wert, Effizienz); gleicher Text + gleiche Gewichtung ersetzt den letzten
@@ -2234,7 +2497,8 @@ function vAlC() {
         sv("al", al),
         rAl());
     }),
-    rAl());
+    rAl(),
+    enhSel());
 }
 let alv = ls("alv", "b"),
   aq = "";

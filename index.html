@@ -269,6 +269,38 @@ h2.section {
   font-size: 0.95rem;
   margin-top: 5px;
 }
+.pp-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: 0.7rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+.pp-toggle input {
+  width: auto !important;
+  margin: 0 !important;
+}
+.pp-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 3px;
+  margin-top: 5px;
+}
+.pp-cell span {
+  display: block;
+  font-size: 0.62rem;
+  color: var(--muted);
+}
+.bcard .pp-cell input[type="number"] {
+  width: 100%;
+  min-width: 0;
+  padding: 3px 1px;
+  font-size: 0.78rem;
+  margin-top: 1px;
+}
 .bcard select {
   width: 100%;
   margin-top: 5px;
@@ -467,6 +499,9 @@ body.pl #plHost {
 }
 #tabs button {
   flex: 1;
+  min-width: 0;
+  padding: 0 2px;
+  text-align: center;
   background: none;
   border: 0;
   color: #8a92a6;
@@ -1183,11 +1218,36 @@ function initCollapsibles() {
     }),
     applyCollapseState());
 }
+// faktoren[LG] ist entweder eine Zahl (nur ein Faktor, altes Format) oder {f, pp, p:[P1..P5]} (pp = Faktor pro Platz an)
+const okF = (v) => typeof v == "number" && !isNaN(v) && v > 0;
+function fkObj(a) {
+  const t = faktoren[a];
+  if (t && typeof t == "object")
+    return {
+      f: okF(t.f) ? t.f : null,
+      pp: !!t.pp,
+      p: [0, 1, 2, 3, 4].map((j) => (okF((t.p || [])[j]) ? t.p[j] : null)),
+    };
+  return { f: okF(t) ? t : null, pp: false, p: [null, null, null, null, null] };
+}
+function setFk(a, patch) {
+  const o = Object.assign(fkObj(a), patch);
+  if (o.f != null && DATA[a] && Math.abs(o.f - DATA[a].faktor) < 1e-9) o.f = null;
+  if (o.pp || o.p.some((v) => v != null)) faktoren[a] = { f: o.f, pp: o.pp, p: o.p };
+  else if (o.f != null) faktoren[a] = o.f;
+  else delete faktoren[a];
+}
 function effectiveFaktor(a) {
   const e = DATA[a];
   if (!e) return null;
-  const t = faktoren[a];
-  return typeof t == "number" && !isNaN(t) && t > 0 ? t : e.faktor;
+  const t = fkObj(a).f;
+  return t != null ? t : e.faktor;
+}
+// Faktor je Platz P1..P5 (ohne „pro Platz“ überall der gleiche; leere Felder = Hauptfaktor)
+function placeFaktoren(a) {
+  const o = fkObj(a),
+    b = effectiveFaktor(a);
+  return [0, 1, 2, 3, 4].map((j) => (o.pp && o.p[j] != null ? o.p[j] : b));
 }
 function getRow(a, e) {
   const t = DATA[a];
@@ -1195,8 +1255,8 @@ function getRow(a, e) {
   const n = t.rows[String(e)];
   if (!n) return null;
   const [r, o, s, i, u, c] = n,
-    d = effectiveFaktor(a),
-    l = [o, s, i, u, c].map((m) => Math.round(m * d)),
+    d = placeFaktoren(a),
+    l = [o, s, i, u, c].map((m, j) => Math.round(m * d[j])),
     f = r - l.reduce((m, g) => m + g, 0);
   return [...l, f];
 }
@@ -1208,6 +1268,7 @@ function getRow(a, e) {
     "nav.lg": {"en": "GB Calculator", "de": "LG-Rechner"},
     "nav.fe": {"en": "Efficiency", "de": "Effizienz"},
     "nav.cp": {"en": "Planner", "de": "Planer"},
+    "nav.nf": {"en": "Schedule", "de": "Zeitplan"},
     "lg.title": {"en": "GB Calculator", "de": "LG-Rechner"},
     "lg.sub": {"en": "Current contribution values per building – calculated automatically from the FoE table", "de": "Aktuelle Beitragswerte pro Bauwerk – automatisch aus der FoE-Tabelle berechnet"},
     "common.playerName": {"en": "Player name", "de": "Spielername"},
@@ -1550,9 +1611,10 @@ function renderBuildings() {
       const t = document.createElement("div");
       t.className = "bcard";
       const n = DATA[e] ? DATA[e].max : 0,
-        r = effectiveFaktor(e);
+        r = effectiveFaktor(e),
+        fo = fkObj(e);
       ((t.style.borderColor = colorForFaktor(r)),
-        Math.abs(r - STANDARD_FAKTOR) > 1e-9 && (t.style.borderWidth = "2px"));
+        (Math.abs(r - STANDARD_FAKTOR) > 1e-9 || fo.pp) && (t.style.borderWidth = "2px"));
       const o = groups
         .map(
           (s) =>
@@ -1565,6 +1627,8 @@ function renderBuildings() {
 <label class="small" style="margin:5px 0 0 0;">${tl("lg.factor")}
 <input type="number" min="1" step="0.01" value="${r}" data-abbr="${e}" class="faktor-input" />
 </label>
+<label class="pp-toggle"><input type="checkbox" data-abbr="${e}" class="pp-check"${fo.pp ? " checked" : ""} /> ${tl("pl.perPlace")}</label>
+${fo.pp ? `<div class="pp-row">${[0, 1, 2, 3, 4].map((d) => `<div class="pp-cell"><span>P${d + 1}</span><input type="number" min="0" step="0.01" placeholder="${r}" value="${fo.p[d] != null ? fo.p[d] : ""}" data-abbr="${e}" data-n="${d}" class="pfaktor-input" /></div>`).join("")}</div>` : ""}
 <div class="group-chips">${o}</div>
 `),
         a.appendChild(t));
@@ -1581,10 +1645,21 @@ function renderBuildings() {
         const n = t.target.dataset.abbr,
           r = parseFloat(t.target.value.replace(",", ".")),
           o = DATA[n];
-        o &&
-          !isNaN(r) &&
-          r > 0 &&
-          (Math.abs(r - o.faktor) < 1e-9 ? delete faktoren[n] : (faktoren[n] = r),
+        o && !isNaN(r) && r > 0 && (setFk(n, { f: r }), saveAll(), renderBuildings(), renderOutput());
+      });
+    }),
+    a.querySelectorAll(".pp-check").forEach((e) => {
+      e.addEventListener("change", (t) => {
+        (setFk(t.target.dataset.abbr, { pp: t.target.checked }), saveAll(), renderBuildings(), renderOutput());
+      });
+    }),
+    a.querySelectorAll(".pfaktor-input").forEach((e) => {
+      e.addEventListener("change", (t) => {
+        const n = t.target.dataset.abbr,
+          r = parseFloat(t.target.value.replace(",", ".")),
+          p = fkObj(n).p;
+        ((p[+t.target.dataset.n] = !isNaN(r) && r > 0 ? r : null),
+          setFk(n, { p }),
           saveAll(),
           renderBuildings(),
           renderOutput());
@@ -2408,8 +2483,8 @@ function restoreToolStore(st) {
   bootstrap());
 </script>
 <div id="plHost"></div>
-<div id="feWrap" hidden><iframe id="fe" title="FoEfficiency"></iframe><iframe id="cpf" title="Stadtplaner" hidden></iframe></div>
-<nav id="tabs"><button data-t="lg"><span>🏛️</span><span data-i18n="nav.lg">LG-Rechner</span></button><button data-t="pl"><span>⚡</span>Powerlevel</button><button data-t="fe"><span>📈</span><span data-i18n="nav.fe">Effizienz</span></button><button data-t="cp"><span>🗺️</span><span data-i18n="nav.cp">Planer</span></button></nav>
+<div id="feWrap" hidden><iframe id="fe" title="FoEfficiency"></iframe><iframe id="cpf" title="Stadtplaner" hidden></iframe><iframe id="nf" title="Zeitplan" hidden></iframe></div>
+<nav id="tabs"><button data-t="lg"><span>🏛️</span><span data-i18n="nav.lg">LG-Rechner</span></button><button data-t="pl"><span>⚡</span>Powerlevel</button><button data-t="fe"><span>📈</span><span data-i18n="nav.fe">Effizienz</span></button><button data-t="cp"><span>🗺️</span><span data-i18n="nav.cp">Planer</span></button><button data-t="nf"><span>🔔</span><span data-i18n="nav.nf">Zeitplan</span></button></nav>
 <script>
 let plDone = 0;
 function setView(n) {
@@ -2737,18 +2812,21 @@ ${h.join("")}
   }),
     D());
 }
-const TB = ["lg", "pl", "fe", "cp"];
+const TB = ["lg", "pl", "fe", "cp", "nf"];
 let feOn = 0,
-  cpOn = 0;
+  cpOn = 0,
+  nfOn = 0;
 function tab(n) {
   (TB.includes(n) || (n = "lg"),
-    document.body.classList.toggle("fe", n == "fe" || n == "cp"),
-    (document.getElementById("feWrap").hidden = n != "fe" && n != "cp"),
+    document.body.classList.toggle("fe", n == "fe" || n == "cp" || n == "nf"),
+    (document.getElementById("feWrap").hidden = n != "fe" && n != "cp" && n != "nf"),
     (document.getElementById("fe").hidden = n != "fe"),
     (document.getElementById("cpf").hidden = n != "cp"),
+    (document.getElementById("nf").hidden = n != "nf"),
     n == "fe" && !feOn && window.parent === window && ((feOn = 1), (document.getElementById("fe").src = "foeff.html")),
     n == "cp" && !cpOn && window.parent === window && ((cpOn = 1), (document.getElementById("cpf").src = "city.html")),
-    n != "fe" && n != "cp" && (i18nSync(), setView(n)),
+    n == "nf" && !nfOn && window.parent === window && ((nfOn = 1), (document.getElementById("nf").src = "notify.html")),
+    n != "fe" && n != "cp" && n != "nf" && (i18nSync(), setView(n)),
     document.querySelectorAll("#tabs button").forEach((i) => i.classList.toggle("on", i.dataset.t == n)));
   try {
     localStorage.setItem("foe-tools:tab", n);
