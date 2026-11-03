@@ -147,9 +147,6 @@ td + td {
   width: auto;
   max-width: 100%;
 }
-#era + button.pk {
-  max-width: 55vw;
-}
 #cat + button.pk {
   flex: 1;
   min-width: 0;
@@ -308,6 +305,7 @@ button.lgpk::after {
 }
 /* Zeitalter-Knopf: gleiche Höhe und Schrift wie die Sprachwahl */
 #era + button.pk {
+  max-width: 34vw;
   height: 30px;
   padding-top: 0;
   padding-bottom: 0;
@@ -316,10 +314,58 @@ button.lgpk::after {
   font-weight: 400;
   border-radius: 6px;
 }
+/* Kurze Listen und Kalender: Dialog in der Mitte */
+.pkov.mid {
+  align-items: center;
+  padding: 16px;
+}
+.pkov.mid .pksh {
+  max-width: 340px;
+  max-height: 80vh;
+  border-radius: 14px;
+  padding-bottom: 12px;
+}
+.pkcal {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 10px;
+  text-align: center;
+}
+.pkcal .wd {
+  color: var(--m);
+  font-size: 12px;
+  padding: 2px 0;
+}
+button.pkd {
+  background: var(--in);
+  color: var(--t);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px 0;
+  font: inherit;
+}
+button.pkd.td {
+  border-color: var(--a2);
+}
+button.pkd.on {
+  background: var(--a2);
+  color: #10141f;
+  font-weight: 700;
+}
+.pkb .pkt button.s {
+  background: var(--in);
+  color: var(--t);
+  border: 1px solid var(--b);
+  border-radius: 8px;
+  padding: 4px 14px;
+  font: inherit;
+  font-size: 1.2rem;
+}
 </style></head><body>
-<div id="ttl"><button class="tgb" id="tgtop" data-i18n-title="ui.tools" title="Tools"></button><span data-i18n="ui.title">Planner</span><select id="lgs" title="Language"><option value="de">DE</option><option value="en">EN</option></select></div>
+<div id="ttl"><button class="tgb" id="tgtop" data-i18n-title="ui.tools" title="Tools"></button><span data-i18n="ui.title">Planner</span><select id="lgs" title="Language" data-i18n-title="ui.lang"><option value="de">DE</option><option value="en">EN</option></select></div>
 <div id="top">
-<select id="era" title="Era" data-i18n-title="ui.eraTitle"></select>
+<select id="era" data-ns title="Era" data-i18n-title="ui.eraTitle"></select>
 <button data-t="hand" title="Info / scroll" data-i18n-title="ui.infoScroll">✋</button>
 <button data-t="sel" title="Multi-select (tap / drag frame)" data-i18n-title="ui.multiSelect">☑</button>
 <button data-t="move" title="Move building (drag)" data-i18n-title="ui.moveBuilding">↔️</button>
@@ -337,7 +383,7 @@ button.lgpk::after {
 <div id="st"></div>
 <div id="botbar"><button class="tgb" id="tgbot" data-i18n-title="ui.panel" title="Lists"></button></div>
 <div id="bot">
-<div id="erabox" hidden style="padding:6px 8px"><span data-i18n="ui.era">Era:</span> <select id="erasel" style="max-width:62%"></select> <span id="eran" style="color:var(--muted)"></span></div>
+<div id="erabox" hidden style="padding:6px 8px"><span data-i18n="ui.era">Era:</span> <select id="erasel" data-ns style="max-width:62%"></select> <span id="eran" style="color:var(--muted)"></span></div>
 <div id="strbox" hidden style="padding:6px 8px"><span data-i18n="ui.street">Street:</span> <select id="strsel" style="max-width:72%"></select></div>
 <div id="lvbox" hidden style="padding:6px 8px"><span data-i18n="ui.gbLevel">GB level:</span> <input id="lv" type="number" min="1" max="999" style="width:80px"> <span id="lvn" style="color:var(--muted)"></span></div>
 <details open id="dp"><summary data-i18n="ui.buildList">Build list</summary>
@@ -377,7 +423,8 @@ button.lgpk::after {
     "ui.deleteLayout": {"en": "Delete layout", "de": "Layout löschen"},
     "ui.gbLevel": {"en": "GB level:", "de": "LG-Stufe:"},
     "ui.buildList": {"en": "Build list", "de": "Bauliste"},
-    "ui.title": {"en": "🏙️ Planner", "de": "🏙️ Planer"},
+    "ui.title": {"en": "🗺️ Planner", "de": "🗺️ Planer"},
+    "ui.lang": {"en": "Language", "de": "Sprache"},
     "ui.done": {"en": "Done", "de": "Fertig"},
     "ui.pickNone": {"en": "Nothing found.", "de": "Nichts gefunden."},
     "ui.search": {"en": "Search…", "de": "Suche…"},
@@ -644,8 +691,9 @@ function pkOpen(o) {
   const L = PKL(),
     q = (s) => document.querySelector(s),
     a = document.createElement("div");
-  a.className = "pkov";
-  const many = o.items.length > 14,
+  // kurze Listen (Sprache, Layouts …) als Dialog in der Mitte, lange als Sheet unten
+  a.className = "pkov" + ((o.mid ?? (!o.multi && o.items.length <= 8)) ? " mid" : "");
+  const many = o.items.length > 14 && !o.nosearch,
     draw = () => {
       const f = (q("#pkq") ? q("#pkq").value : "").trim().toLowerCase(),
         row = (v, t, all) =>
@@ -729,6 +777,7 @@ function enhSel(root, sel) {
         );
       pkOpen({
         title: s.dataset.t || s.title || "",
+        nosearch: s.dataset.ns != null,
         items,
         sel: (v) => v == s.value,
         pick: (v) => {
@@ -737,6 +786,88 @@ function enhSel(root, sel) {
         },
       });
     };
+  });
+}
+// Kalender im App-Design statt des Browser-Datumsdialogs: o = {title, value "JJJJ-MM-TT", pick(wert)}
+function pkDate(o) {
+  const lang = PKL().lang || "de",
+    p2 = (n) => String(n).padStart(2, "0"),
+    now = new Date(),
+    today = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`,
+    a = document.createElement("div");
+  let [y, m] = (o.value || today).split("-").map(Number);
+  m -= 1;
+  a.className = "pkov mid";
+  const draw = () => {
+    const first = (new Date(y, m, 1).getDay() + 6) % 7,
+      n = new Date(y, m + 1, 0).getDate();
+    let h = `<div class="pkt"><button type="button" class="s" data-nav="-1">‹</button><b>${pkEsc(new Date(y, m, 1).toLocaleDateString(lang, { month: "long", year: "numeric" }))}</b><button type="button" class="s" data-nav="1">›</button></div><div class="pkcal">`;
+    for (let i = 0; i < 7; i++)
+      h += `<span class="wd">${pkEsc(new Date(2026, 0, 5 + i).toLocaleDateString(lang, { weekday: "short" }))}</span>`;
+    for (let i = 0; i < first; i++) h += "<span></span>";
+    for (let d = 1; d <= n; d++) {
+      const v = `${y}-${p2(m + 1)}-${p2(d)}`;
+      h += `<button type="button" class="pkd${v == o.value ? " on" : ""}${v == today ? " td" : ""}" data-d="${v}">${d}</button>`;
+    }
+    a.firstChild.querySelector(".pkb").innerHTML = h + "</div>";
+  };
+  a.innerHTML = `<div class="card pksh"><div class="pkh"><div class="pkt"><b>${pkEsc(o.title || "")}</b></div></div><div class="pkb"></div></div>`;
+  document.body.appendChild(a);
+  draw();
+  a.onclick = (e) => {
+    if (e.target === a) return a.remove();
+    const t = e.target.closest("button");
+    if (!t) return;
+    if (t.dataset.nav) {
+      m += +t.dataset.nav;
+      m < 0 && ((m = 11), y--);
+      m > 11 && ((m = 0), y++);
+      return draw();
+    }
+    t.dataset.d && (o.pick(t.dataset.d), a.remove());
+  };
+}
+function pkDateLabel(s) {
+  const v = s.value;
+  s._pk.textContent = /^\d{4}-\d{2}-\d{2}$/.test(v)
+    ? new Date(+v.slice(0, 4), +v.slice(5, 7) - 1, +v.slice(8)).toLocaleDateString(PKL().lang || "de", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+    : "–";
+}
+function enhDate(root) {
+  (root || document).querySelectorAll("input[type=date]").forEach((s) => {
+    if (s._pk) return pkDateLabel(s);
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "pk";
+    s.style.display = "none";
+    s.after(b);
+    s._pk = b;
+    const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+    Object.defineProperty(s, "value", {
+      configurable: true,
+      get() {
+        return d.get.call(this);
+      },
+      set(v) {
+        d.set.call(this, v);
+        pkDateLabel(this);
+      },
+    });
+    pkDateLabel(s);
+    s.addEventListener("change", () => pkDateLabel(s));
+    b.onclick = () =>
+      pkDate({
+        title: s.closest("label") ? s.closest("label").firstElementChild.textContent : "",
+        value: s.value,
+        pick: (v) => {
+          s.value = v;
+          s.dispatchEvent(new Event("change"));
+        },
+      });
   });
 }
 </script><script>
