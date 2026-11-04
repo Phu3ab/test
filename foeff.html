@@ -186,7 +186,10 @@ button.pk {
   border: 1px solid var(--b);
   border-radius: 8px;
   padding: 8px 26px 8px 10px;
-  font: inherit;
+  font:
+    15px Segoe UI,
+    system-ui,
+    sans-serif;
   text-align: left;
   width: 100%;
   min-width: 0;
@@ -380,6 +383,66 @@ button.pkd.on {
   padding: 4px 14px;
   font: inherit;
   font-size: 1.2rem;
+}
+/* Einheitliche Schrift in allen Auswahl-Dialogen (wie Effizienz), unabhängig von der Seite */
+.pkov,
+.pkov input,
+.pkov button {
+  font-family:
+    Segoe UI,
+    system-ui,
+    sans-serif;
+  font-size: 15px;
+  line-height: normal;
+  letter-spacing: 0;
+}
+.pkov {
+  color: var(--t);
+  font-weight: 400;
+}
+.pkov .pkcal .wd {
+  font-size: 12px;
+}
+.pkov b {
+  font-weight: 700;
+}
+.pkov .pkr.on {
+  font-weight: 600;
+}
+/* Zeitwähler (pkTime) */
+.pkh6 {
+  grid-template-columns: repeat(6, 1fr);
+}
+.pktm {
+  text-align: center;
+  font-size: 2rem;
+  letter-spacing: 2px;
+  margin-top: 6px;
+}
+.pkb .pkh6 + .pkh6 {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--b);
+}
+.pkfine {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.pkb .pkfine button.s {
+  background: var(--in);
+  color: var(--t);
+  border: 1px solid var(--b);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font: inherit;
+}
+button.pk.tm {
+  width: auto;
+  min-width: 78px;
+  text-align: center;
+  padding-left: 10px;
 }
 </style></head><body>
 <header><h1 style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="white-space:nowrap">📈 FoEfficiency</span><span style="display:flex;gap:6px;min-width:0"><select id="era" data-ns title="Zeitalter" data-i18n-title="f.era" style="width:auto;min-width:0;max-width:34vw;font-size:.85rem;text-overflow:ellipsis"></select><select id="lg" data-i18n-title="f.lang" style="width:auto;padding:4px 6px"><option value="de">DE</option><option value="en">EN</option></select></span></h1><nav id="nav"></nav></header><main id="v"></main>
@@ -1124,8 +1187,8 @@ const evK = (e) => (e[3] || "").replace(/\s*\d{4}$/, ""),
       ),
     ].sort((e, t) => evN(e).localeCompare(evN(t), "de")),
   // gewählte Events (Mehrfachauswahl); alte Speicherung war ein einzelner Name
-  fevL = () => {
-    const v = ls("fev", []);
+  fevL = (x = "") => {
+    const v = ls("fev" + x, []);
     return Array.isArray(v) ? v : v ? [v] : [];
   },
   yrList = (e) =>
@@ -1140,41 +1203,42 @@ const evK = (e) => (e[3] || "").replace(/\s*\d{4}$/, ""),
   fopt = (e, t, n) =>
     `<option value="">${e}</option>` +
     t.map((s) => `<option value="${esc(s)}"${s == n ? " selected" : ""}>${esc(s)}</option>`).join(""),
-  evLabel = () => {
-    const e = fevL();
+  evLabel = (x = "") => {
+    const e = fevL(x);
     return e.length ? evN(e[0]) + (e.length > 1 ? ` +${e.length - 1}` : "") : tl("f.allEvents");
   },
-  evUI = () => {
-    const e = fevL();
+  evUI = (x = "") => {
+    const e = fevL(x);
     return [
-      `<div class="row" style="gap:6px;margin:6px 0"><button type="button" class="pk" id="fev" style="flex:2">${esc(evLabel())}</button><select id="fyr" data-t="${tl("f.year")}" style="flex:1">${fopt(tl("f.allYears"), yrList(e), ls("fyr", ""))}</select></div>`,
+      `<div class="row" style="gap:6px;margin:6px 0"><button type="button" class="pk" id="fev" style="flex:2">${esc(evLabel(x))}</button><select id="fyr" data-t="${tl("f.year")}" style="flex:1">${fopt(tl("f.allYears"), yrList(e), ls("fyr" + x, ""))}</select></div>`,
       `<label class="m" style="display:flex;align-items:center;gap:8px;margin:4px 0"><input type="checkbox" id="fnl" style="width:20px;height:20px;flex:none;margin:0"${ls("fnl", 0) ? " checked" : ""}> ${tl("f.noTimed")}</label>`,
     ];
   },
-  evBind = (e) => {
-    (($("#fnl").onchange = (t) => {
-      (sv("fnl", t.target.checked ? 1 : 0), e());
-    }),
+  evBind = (e, x = "") => {
+    ($("#fnl") &&
+      ($("#fnl").onchange = (t) => {
+        (sv("fnl", t.target.checked ? 1 : 0), e());
+      }),
       ($("#fev").onclick = () =>
         pkOpen({
           title: tl("f.event"),
           multi: true,
           all: tl("f.allEvents"),
-          items: evList().map((x) => [x, evN(x), ""]),
-          sel: (v, all) => (all ? !fevL().length : fevL().includes(v)),
+          items: evList().map((v) => [v, evN(v), ""]),
+          sel: (v, all) => (all ? !fevL(x).length : fevL(x).includes(v)),
           pick: (v, all) => {
-            const c = fevL(),
-              n = all ? [] : c.includes(v) ? c.filter((x) => x != v) : [...c, v];
-            (sv("fev", n),
-              yrList(n).includes(ls("fyr", "")) || sv("fyr", ""),
-              setHtml($("#fyr"), fopt(tl("f.allYears"), yrList(n), ls("fyr", ""))),
+            const c = fevL(x),
+              n = all ? [] : c.includes(v) ? c.filter((y) => y != v) : [...c, v];
+            (sv("fev" + x, n),
+              yrList(n).includes(ls("fyr" + x, "")) || sv("fyr" + x, ""),
+              setHtml($("#fyr"), fopt(tl("f.allYears"), yrList(n), ls("fyr" + x, ""))),
               pkLabel($("#fyr")),
-              ($("#fev").textContent = evLabel()),
+              ($("#fev").textContent = evLabel(x)),
               e());
           },
         })),
       ($("#fyr").onchange = (t) => {
-        (sv("fyr", t.target.value), e());
+        (sv("fyr" + x, t.target.value), e());
       }));
   };
 // Einzelne Items (Kits, Pakete, Beschleuniger …) als Sortier-/Stat-Auswahl: Schlüssel = stem(Name), Menge = Anteil pro Gebäude im gewählten Zeitalter
@@ -1218,8 +1282,14 @@ const skList = () =>
         [...e].sort((t, n) => t - n)
       );
     })()),
+  // Sortierschlüssel "i:k1,k2,…" = Summe der gewählten Items (ein Schlüssel = altes Einzel-Item)
+  skIts = (e) => (e.startsWith("i:") ? e.slice(2).split(",").filter(Boolean) : []),
   SKL = (e) =>
-    (e.startsWith("i:") ? trn(itName(e.slice(2))) : null) ||
+    (e.startsWith("i:")
+      ? skIts(e)
+          .map((k) => trn(itName(k)))
+          .join(" + ")
+      : null) ||
     {
       e: tl("f.s.eff"),
       t: tl("f.s.total"),
@@ -1246,7 +1316,7 @@ const skList = () =>
                     area(e)
                   : 0
                 : t.startsWith("i:")
-                  ? n * itAmt(e, t.slice(2))
+                  ? n * skIts(t).reduce((a, k) => a + itAmt(e, k), 0)
                   : n * (ev(e)[t.slice(1)] || 0),
   skc = (e, t) => (n, s) => {
     const a = n[1],
@@ -1259,26 +1329,53 @@ const skList = () =>
     return tot(bt(s[0])) - tot(bt(n[0])) || nm(bt(n[0])).localeCompare(nm(bt(s[0])), "de");
   },
   skx = (e, t) => (e == "e" || e == "n" ? "" : ` · ${SKL(e)}: ${fmt(t)}`),
-  skOpt = (e, t) =>
-    `<option value="${t}"${t == ls("sk:" + e, "e") ? " selected" : ""}>${tl("f.sort")} ${SKL(t)}</option>`,
+  // Beschriftung des Sortier-Knopfs: bei mehreren Items „Erstes +n“
+  skLbl = (t) => {
+    const k = skIts(t);
+    return `${tl("f.sort")} ${k.length > 1 ? trn(itName(k[0])) + ` +${k.length - 1}` : SKL(t)}`;
+  },
   skUI = (e) =>
-    `<div class="row" style="gap:6px;margin:6px 0"><select id="sk${e}" data-strip="1" data-t="${tl("f.sort")}" style="flex:1">${["e", "t", "n", "a", "i", ...(e == "eff" && selN() ? ["s"] : []), ...skList().map((t) => "r" + t)].map((t) => skOpt(e, t)).join("")}<optgroup label="${tl("f.s.items")}">${itKeys()
-      .map((k) => skOpt(e, "i:" + k))
-      .join(
-        "",
-      )}</optgroup></select><button class="s" id="sd${e}" title="${tl("f.reverse")}">${ls("sd:" + e, 0) ? "↑" : "↓"}</button>${e == "eff" ? `<button class="s" id="stb">${tl("f.s.stats")}${selN() ? " (" + selN() + ")" : ""}</button>` : ""}</div>${e == "eff" && selN() ? `<div id="stc" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0">${schips()}</div>` : ""}`,
-  skBind = (e, t) => {
-    if (e == "eff") {
-      $("#stb").onclick = statSheet;
-      $("#stc") &&
-        ($("#stc").onclick = (n) => {
-          if (!chipDel(n.target)) return;
-          (selN() || ls("sk:eff", "e") != "s" || sv("sk:eff", "e"), vEff());
-        });
-    }
-    (($("#sk" + e).onchange = (n) => {
-      (sv("sk:" + e, n.target.value), t());
+    `<div class="row" style="gap:6px;margin:6px 0"><button type="button" class="pk" id="sk${e}" style="flex:1">${esc(skLbl(ls("sk:" + e, "e")))}</button><button class="s" id="sd${e}" title="${tl("f.reverse")}">${ls("sd:" + e, 0) ? "↑" : "↓"}</button><button class="s" id="stb">${tl("f.s.stats")}${selN() ? " (" + selN() + ")" : ""}</button></div>${selN() ? `<div id="stc" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0">${schips()}</div>` : ""}`,
+  // Neu zeichnen nach Änderung der Auswahl (Gebäude: Tab neu; Stadt/Inventar: Bericht neu)
+  skRe = (e) => (e == "eff" ? vEff : () => rIm(e)),
+  skMenu = (e, t) =>
+    pkOpen({
+      title: tl("f.sort"),
+      mu: (v, g) => !!g,
+      items: [
+        ...["e", "t", "n", "a", "i", ...(selN() ? ["s"] : []), ...skList().map((r) => "r" + r)].map((r) => [
+          r,
+          SKL(r),
+          "",
+        ]),
+        ...itKeys().map((k) => ["i:" + k, trn(itName(k)), tl("f.s.items")]),
+      ],
+      sel: (v) => {
+        const c = ls("sk:" + e, "e");
+        return v.startsWith("i:") ? skIts(c).includes(v.slice(2)) : v == c;
+      },
+      pick: (v) => {
+        const c = ls("sk:" + e, "e");
+        let n = v;
+        if (v.startsWith("i:")) {
+          const k = v.slice(2),
+            a = skIts(c),
+            r = a.includes(k) ? a.filter((x) => x != k) : [...a, k];
+          n = r.length ? "i:" + r.join(",") : "e";
+        } else document.querySelector(".pkov").remove();
+        sv("sk:" + e, n);
+        $("#sk" + e).textContent = skLbl(n);
+        t();
+      },
     }),
+  skBind = (e, t) => {
+    $("#stb").onclick = () => statSheet(e);
+    $("#stc") &&
+      ($("#stc").onclick = (n) => {
+        if (!chipDel(n.target)) return;
+        (selN() || ls("sk:" + e, "e") != "s" || sv("sk:" + e, "e"), skRe(e)());
+      });
+    (($("#sk" + e).onclick = () => skMenu(e, t)),
       ($("#sd" + e).onclick = (n) => {
         const s = ls("sd:" + e, 0) ? 0 : 1;
         (sv("sd:" + e, s), (n.target.textContent = s ? "↑" : "↓"), t());
@@ -1323,7 +1420,7 @@ const ssel = () => ls("ssel", []),
           `<span class="s" ${d} style="padding:4px 10px;border-radius:12px;cursor:pointer"><span>${esc(n)}</span> ✕</span>`,
       )
       .join("");
-function statSheet() {
+function statSheet(e0) {
   const a = document.createElement("div");
   a.style.cssText =
     "position:fixed;inset:0;background:#0009;z-index:20;display:flex;align-items:flex-end;justify-content:center";
@@ -1371,9 +1468,9 @@ function statSheet() {
   );
   document.body.appendChild(a);
   const done = () => {
-    selN() ? sv("sk:eff", "s") : ls("sk:eff", "e") == "s" && sv("sk:eff", "e");
+    selN() ? sv("sk:" + e0, "s") : ls("sk:" + e0, "e") == "s" && sv("sk:" + e0, "e");
     a.remove();
-    vEff();
+    skRe(e0)();
   };
   a.onclick = (e) => {
     e.target === a && done();
@@ -1716,22 +1813,23 @@ function pkOpen(o) {
     q = (s) => document.querySelector(s),
     a = document.createElement("div");
   // kurze Listen (Sprache, Layouts …) als Dialog in der Mitte, lange als Sheet unten
-  a.className = "pkov" + ((o.mid ?? (!o.multi && o.items.length <= 8)) ? " mid" : "");
+  a.className = "pkov" + ((o.mid ?? (!o.multi && !o.mu && o.items.length <= 8)) ? " mid" : "");
   const many = o.items.length > 14 && !o.nosearch,
     draw = () => {
       const f = (q("#pkq") ? q("#pkq").value : "").trim().toLowerCase(),
-        row = (v, t, all) =>
-          `<div class="pkr${o.sel(v, all) ? " on" : ""}${o.multi ? " mu" : ""}" data-v="${pkEsc(v)}"${all ? ' data-all="1"' : ""}><span>${pkEsc(t)}</span><i class="ck"></i></div>`;
+        // o.mu(v, gruppe) macht einzelne Zeilen zu Häkchen-Zeilen (Sheet bleibt offen), die übrigen wählen einfach und schließen
+        row = (v, t, all, grp) =>
+          `<div class="pkr${o.sel(v, all) ? " on" : ""}${(o.mu ? o.mu(v, grp) : o.multi) ? " mu" : ""}" data-v="${pkEsc(v)}"${all ? ' data-all="1"' : ""}><span>${pkEsc(t)}</span><i class="ck"></i></div>`;
       let g = null,
         h = o.all && !f ? row("", o.all, true) : "";
       for (const [v, t, grp] of o.items) {
         if (f && !t.toLowerCase().includes(f)) continue;
         grp !== g && ((g = grp), grp && (h += `<h2>${pkEsc(grp)}</h2>`));
-        h += row(v, t);
+        h += row(v, t, false, grp);
       }
       q("#pkl").innerHTML = h || `<div class="pkn">${pkEsc(L.none)}</div>`;
     };
-  a.innerHTML = `<div class="card pksh"><div class="pkh"><div class="pkt"><b>${pkEsc(o.title || "")}</b>${o.multi ? `<button class="s" id="pkd">${pkEsc(L.done)}</button>` : ""}</div>${many ? `<input id="pkq" type="search" placeholder="${pkEsc(L.ph)}" style="margin-top:8px;width:100%">` : ""}</div><div id="pkl"></div></div>`;
+  a.innerHTML = `<div class="card pksh"><div class="pkh"><div class="pkt"><b>${pkEsc(o.title || "")}</b>${o.multi || o.mu ? `<button class="s" id="pkd">${pkEsc(L.done)}</button>` : ""}</div>${many ? `<input id="pkq" type="search" placeholder="${pkEsc(L.ph)}" style="margin-top:8px;width:100%">` : ""}</div><div id="pkl"></div></div>`;
   document.body.appendChild(a);
   draw();
   const sc = a.querySelector(".pksh"),
@@ -1742,7 +1840,7 @@ function pkOpen(o) {
     const r = e.target.closest(".pkr");
     if (!r) return;
     o.pick(r.dataset.v, !!r.dataset.all);
-    if (o.multi) {
+    if (r.classList.contains("mu")) {
       const y = sc.scrollTop;
       draw();
       sc.scrollTop = y;
@@ -1886,6 +1984,72 @@ function enhDate(root) {
     b.onclick = () =>
       pkDate({
         title: s.closest("label") ? s.closest("label").firstElementChild.textContent : "",
+        value: s.value,
+        pick: (v) => {
+          s.value = v;
+          s.dispatchEvent(new Event("change"));
+        },
+      });
+  });
+}
+// Zeitwähler im App-Design statt des Android-Uhrdialogs: o = {title, value "HH:MM", pick(wert)}; Stunden 0–23, Minuten in 5er-Schritten + ±1
+function pkTime(o) {
+  const L = PKL(),
+    p2 = (n) => String(n).padStart(2, "0"),
+    a = document.createElement("div");
+  let [h, m] = /^\d{2}:\d{2}$/.test(o.value || "") ? o.value.split(":").map(Number) : [18, 0];
+  a.className = "pkov mid";
+  const draw = () => {
+    let x = `<div class="pktm"><b>${p2(h)}:${p2(m)}</b></div><div class="pkcal pkh6">`;
+    for (let i = 0; i < 24; i++)
+      x += `<button type="button" class="pkd${i == h ? " on" : ""}" data-h="${i}">${p2(i)}</button>`;
+    x += `</div><div class="pkcal pkh6">`;
+    for (let i = 0; i < 60; i += 5)
+      x += `<button type="button" class="pkd${i == m ? " on" : ""}" data-m="${i}">${p2(i)}</button>`;
+    x += `</div><div class="pkfine"><button type="button" class="s" data-d="-1">−1 min</button><button type="button" class="s" data-d="1">+1 min</button></div>`;
+    a.querySelector(".pkb").innerHTML = x;
+  };
+  a.innerHTML = `<div class="card pksh"><div class="pkh"><div class="pkt"><b>${pkEsc(o.title || "")}</b><button type="button" class="s" data-ok="1">${pkEsc(L.done)}</button></div></div><div class="pkb"></div></div>`;
+  document.body.appendChild(a);
+  draw();
+  a.onclick = (e) => {
+    if (e.target === a) return a.remove();
+    const t = e.target.closest("button");
+    if (!t) return;
+    if (t.dataset.ok) return (o.pick(`${p2(h)}:${p2(m)}`), a.remove());
+    if (t.dataset.h) h = +t.dataset.h;
+    if (t.dataset.m) m = +t.dataset.m;
+    if (t.dataset.d) {
+      const v = (((h * 60 + m + +t.dataset.d) % 1440) + 1440) % 1440;
+      ((h = Math.floor(v / 60)), (m = v % 60));
+    }
+    draw();
+  };
+}
+function enhTime(root) {
+  (root || document).querySelectorAll("input[type=time]").forEach((s) => {
+    if (s._pk) return (s._pk.textContent = s.value || "–");
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "pk tm";
+    s.style.display = "none";
+    s.after(b);
+    s._pk = b;
+    const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+    Object.defineProperty(s, "value", {
+      configurable: true,
+      get() {
+        return d.get.call(this);
+      },
+      set(v) {
+        d.set.call(this, v);
+        b.textContent = this.value || "–";
+      },
+    });
+    b.textContent = s.value || "–";
+    b.onclick = () =>
+      pkTime({
+        title: s.title || "",
         value: s.value,
         pick: (v) => {
           s.value = v;
@@ -2117,7 +2281,7 @@ function rIm(e, save) {
         .filter((r, i, a) => a.indexOf(r) === i)
         .sort((a, b) => a.localeCompare(b))
         .map((r) => `<option value="${esc(r)}">`)
-        .join("")}</datalist>${skUI(e)}<div id="gl"></div>` +
+        .join("")}</datalist>${evUI(":" + e)[0]}${skUI(e)}<div id="gl"></div>` +
       (n.length ? `<h2>${tl("f.unrecognized", { n: n.length })}</h2><div class="card m">${n.join("<br>")}</div>` : ""),
   );
   let S = ls("sk:" + e, "e");
@@ -2128,13 +2292,16 @@ function rIm(e, save) {
     y = () => {
       const r = u.value.trim().toLowerCase();
       (sv("itf_" + e, u.value), (S = ls("sk:" + e, "e")));
-      const p = (r ? t.filter((v) => w(v, r)) : t.slice())
-        .map((v) => [v, skv(v[0], S, v[1])])
-        .sort(skc(S, ls("sd:" + e, 0)))
-        .map((v) => v[0]);
+      const fe = fevL(":" + e),
+        fy = ls("fyr:" + e, ""),
+        p = t
+          .filter((v) => (!r || w(v, r)) && (!fe.length || fe.includes(evK(v[0]))) && (!fy || yrK(v[0]) == fy))
+          .map((v) => [v, skv(v[0], S, v[1])])
+          .sort(skc(S, ls("sd:" + e, 0)))
+          .map((v) => v[0]);
       setHtml(
         $("#gl"),
-        (r
+        (r || fe.length || fy
           ? `<div class="m" style="margin:0 2px 6px">${tl("f.hits", {
               n: p.length,
               b: fmt(
@@ -2147,6 +2314,7 @@ function rIm(e, save) {
     };
   ((u.oninput = y),
     skBind(e, y),
+    evBind(y, ":" + e),
     document.querySelectorAll("#o [data-hc]").forEach(
       (r) =>
         (r.onclick = () => {

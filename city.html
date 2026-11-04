@@ -153,11 +153,14 @@ td + td {
 }
 #ttl {
   flex: none;
-  padding: 10px 14px 4px;
+  padding: 10px 76px 4px 14px;
   font-size: 1.15rem;
   font-weight: 700;
   color: var(--accent);
   letter-spacing: 0.5px;
+}
+#ttl #era + button.pk {
+  margin-left: auto;
 }
 </style><style>
 /* Gemeinsame Auswahl (js/pick.js). Erwartet die Variablen --in --t --b --m --c --a --a2 der Seite. */
@@ -167,7 +170,10 @@ button.pk {
   border: 1px solid var(--b);
   border-radius: 8px;
   padding: 8px 26px 8px 10px;
-  font: inherit;
+  font:
+    15px Segoe UI,
+    system-ui,
+    sans-serif;
   text-align: left;
   width: 100%;
   min-width: 0;
@@ -362,10 +368,69 @@ button.pkd.on {
   font: inherit;
   font-size: 1.2rem;
 }
+/* Einheitliche Schrift in allen Auswahl-Dialogen (wie Effizienz), unabhängig von der Seite */
+.pkov,
+.pkov input,
+.pkov button {
+  font-family:
+    Segoe UI,
+    system-ui,
+    sans-serif;
+  font-size: 15px;
+  line-height: normal;
+  letter-spacing: 0;
+}
+.pkov {
+  color: var(--t);
+  font-weight: 400;
+}
+.pkov .pkcal .wd {
+  font-size: 12px;
+}
+.pkov b {
+  font-weight: 700;
+}
+.pkov .pkr.on {
+  font-weight: 600;
+}
+/* Zeitwähler (pkTime) */
+.pkh6 {
+  grid-template-columns: repeat(6, 1fr);
+}
+.pktm {
+  text-align: center;
+  font-size: 2rem;
+  letter-spacing: 2px;
+  margin-top: 6px;
+}
+.pkb .pkh6 + .pkh6 {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--b);
+}
+.pkfine {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.pkb .pkfine button.s {
+  background: var(--in);
+  color: var(--t);
+  border: 1px solid var(--b);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font: inherit;
+}
+button.pk.tm {
+  width: auto;
+  min-width: 78px;
+  text-align: center;
+  padding-left: 10px;
+}
 </style></head><body>
-<div id="ttl"><button class="tgb" id="tgtop" data-i18n-title="ui.tools" title="Tools"></button><span data-i18n="ui.title">Planner</span><select id="lgs" title="Language" data-i18n-title="ui.lang"><option value="de">DE</option><option value="en">EN</option></select></div>
+<div id="ttl"><button class="tgb" id="tgtop" data-i18n-title="ui.tools" title="Tools"></button><span data-i18n="ui.title">Planner</span><select id="era" data-ns title="Era" data-i18n-title="ui.eraTitle"></select><select id="lgs" title="Language" data-i18n-title="ui.lang"><option value="de">DE</option><option value="en">EN</option></select></div>
 <div id="top">
-<select id="era" data-ns title="Era" data-i18n-title="ui.eraTitle"></select>
 <button data-t="hand" title="Info / scroll" data-i18n-title="ui.infoScroll">✋</button>
 <button data-t="sel" title="Multi-select (tap / drag frame)" data-i18n-title="ui.multiSelect">☑</button>
 <button data-t="move" title="Move building (drag)" data-i18n-title="ui.moveBuilding">↔️</button>
@@ -692,22 +757,23 @@ function pkOpen(o) {
     q = (s) => document.querySelector(s),
     a = document.createElement("div");
   // kurze Listen (Sprache, Layouts …) als Dialog in der Mitte, lange als Sheet unten
-  a.className = "pkov" + ((o.mid ?? (!o.multi && o.items.length <= 8)) ? " mid" : "");
+  a.className = "pkov" + ((o.mid ?? (!o.multi && !o.mu && o.items.length <= 8)) ? " mid" : "");
   const many = o.items.length > 14 && !o.nosearch,
     draw = () => {
       const f = (q("#pkq") ? q("#pkq").value : "").trim().toLowerCase(),
-        row = (v, t, all) =>
-          `<div class="pkr${o.sel(v, all) ? " on" : ""}${o.multi ? " mu" : ""}" data-v="${pkEsc(v)}"${all ? ' data-all="1"' : ""}><span>${pkEsc(t)}</span><i class="ck"></i></div>`;
+        // o.mu(v, gruppe) macht einzelne Zeilen zu Häkchen-Zeilen (Sheet bleibt offen), die übrigen wählen einfach und schließen
+        row = (v, t, all, grp) =>
+          `<div class="pkr${o.sel(v, all) ? " on" : ""}${(o.mu ? o.mu(v, grp) : o.multi) ? " mu" : ""}" data-v="${pkEsc(v)}"${all ? ' data-all="1"' : ""}><span>${pkEsc(t)}</span><i class="ck"></i></div>`;
       let g = null,
         h = o.all && !f ? row("", o.all, true) : "";
       for (const [v, t, grp] of o.items) {
         if (f && !t.toLowerCase().includes(f)) continue;
         grp !== g && ((g = grp), grp && (h += `<h2>${pkEsc(grp)}</h2>`));
-        h += row(v, t);
+        h += row(v, t, false, grp);
       }
       q("#pkl").innerHTML = h || `<div class="pkn">${pkEsc(L.none)}</div>`;
     };
-  a.innerHTML = `<div class="card pksh"><div class="pkh"><div class="pkt"><b>${pkEsc(o.title || "")}</b>${o.multi ? `<button class="s" id="pkd">${pkEsc(L.done)}</button>` : ""}</div>${many ? `<input id="pkq" type="search" placeholder="${pkEsc(L.ph)}" style="margin-top:8px;width:100%">` : ""}</div><div id="pkl"></div></div>`;
+  a.innerHTML = `<div class="card pksh"><div class="pkh"><div class="pkt"><b>${pkEsc(o.title || "")}</b>${o.multi || o.mu ? `<button class="s" id="pkd">${pkEsc(L.done)}</button>` : ""}</div>${many ? `<input id="pkq" type="search" placeholder="${pkEsc(L.ph)}" style="margin-top:8px;width:100%">` : ""}</div><div id="pkl"></div></div>`;
   document.body.appendChild(a);
   draw();
   const sc = a.querySelector(".pksh"),
@@ -718,7 +784,7 @@ function pkOpen(o) {
     const r = e.target.closest(".pkr");
     if (!r) return;
     o.pick(r.dataset.v, !!r.dataset.all);
-    if (o.multi) {
+    if (r.classList.contains("mu")) {
       const y = sc.scrollTop;
       draw();
       sc.scrollTop = y;
@@ -862,6 +928,72 @@ function enhDate(root) {
     b.onclick = () =>
       pkDate({
         title: s.closest("label") ? s.closest("label").firstElementChild.textContent : "",
+        value: s.value,
+        pick: (v) => {
+          s.value = v;
+          s.dispatchEvent(new Event("change"));
+        },
+      });
+  });
+}
+// Zeitwähler im App-Design statt des Android-Uhrdialogs: o = {title, value "HH:MM", pick(wert)}; Stunden 0–23, Minuten in 5er-Schritten + ±1
+function pkTime(o) {
+  const L = PKL(),
+    p2 = (n) => String(n).padStart(2, "0"),
+    a = document.createElement("div");
+  let [h, m] = /^\d{2}:\d{2}$/.test(o.value || "") ? o.value.split(":").map(Number) : [18, 0];
+  a.className = "pkov mid";
+  const draw = () => {
+    let x = `<div class="pktm"><b>${p2(h)}:${p2(m)}</b></div><div class="pkcal pkh6">`;
+    for (let i = 0; i < 24; i++)
+      x += `<button type="button" class="pkd${i == h ? " on" : ""}" data-h="${i}">${p2(i)}</button>`;
+    x += `</div><div class="pkcal pkh6">`;
+    for (let i = 0; i < 60; i += 5)
+      x += `<button type="button" class="pkd${i == m ? " on" : ""}" data-m="${i}">${p2(i)}</button>`;
+    x += `</div><div class="pkfine"><button type="button" class="s" data-d="-1">−1 min</button><button type="button" class="s" data-d="1">+1 min</button></div>`;
+    a.querySelector(".pkb").innerHTML = x;
+  };
+  a.innerHTML = `<div class="card pksh"><div class="pkh"><div class="pkt"><b>${pkEsc(o.title || "")}</b><button type="button" class="s" data-ok="1">${pkEsc(L.done)}</button></div></div><div class="pkb"></div></div>`;
+  document.body.appendChild(a);
+  draw();
+  a.onclick = (e) => {
+    if (e.target === a) return a.remove();
+    const t = e.target.closest("button");
+    if (!t) return;
+    if (t.dataset.ok) return (o.pick(`${p2(h)}:${p2(m)}`), a.remove());
+    if (t.dataset.h) h = +t.dataset.h;
+    if (t.dataset.m) m = +t.dataset.m;
+    if (t.dataset.d) {
+      const v = (((h * 60 + m + +t.dataset.d) % 1440) + 1440) % 1440;
+      ((h = Math.floor(v / 60)), (m = v % 60));
+    }
+    draw();
+  };
+}
+function enhTime(root) {
+  (root || document).querySelectorAll("input[type=time]").forEach((s) => {
+    if (s._pk) return (s._pk.textContent = s.value || "–");
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "pk tm";
+    s.style.display = "none";
+    s.after(b);
+    s._pk = b;
+    const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+    Object.defineProperty(s, "value", {
+      configurable: true,
+      get() {
+        return d.get.call(this);
+      },
+      set(v) {
+        d.set.call(this, v);
+        b.textContent = this.value || "–";
+      },
+    });
+    b.textContent = s.value || "–";
+    b.onclick = () =>
+      pkTime({
+        title: s.title || "",
         value: s.value,
         pick: (v) => {
           s.value = v;

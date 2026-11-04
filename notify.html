@@ -186,7 +186,10 @@ button.pk {
   border: 1px solid var(--b);
   border-radius: 8px;
   padding: 8px 26px 8px 10px;
-  font: inherit;
+  font:
+    15px Segoe UI,
+    system-ui,
+    sans-serif;
   text-align: left;
   width: 100%;
   min-width: 0;
@@ -381,12 +384,71 @@ button.pkd.on {
   font: inherit;
   font-size: 1.2rem;
 }
+/* Einheitliche Schrift in allen Auswahl-Dialogen (wie Effizienz), unabhängig von der Seite */
+.pkov,
+.pkov input,
+.pkov button {
+  font-family:
+    Segoe UI,
+    system-ui,
+    sans-serif;
+  font-size: 15px;
+  line-height: normal;
+  letter-spacing: 0;
+}
+.pkov {
+  color: var(--t);
+  font-weight: 400;
+}
+.pkov .pkcal .wd {
+  font-size: 12px;
+}
+.pkov b {
+  font-weight: 700;
+}
+.pkov .pkr.on {
+  font-weight: 600;
+}
+/* Zeitwähler (pkTime) */
+.pkh6 {
+  grid-template-columns: repeat(6, 1fr);
+}
+.pktm {
+  text-align: center;
+  font-size: 2rem;
+  letter-spacing: 2px;
+  margin-top: 6px;
+}
+.pkb .pkh6 + .pkh6 {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--b);
+}
+.pkfine {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.pkb .pkfine button.s {
+  background: var(--in);
+  color: var(--t);
+  border: 1px solid var(--b);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font: inherit;
+}
+button.pk.tm {
+  width: auto;
+  min-width: 78px;
+  text-align: center;
+  padding-left: 10px;
+}
 </style></head><body>
 <header>
 <h1 data-i18n="n.title">Zeitplan-Erinnerungen</h1>
 <select id="lgs" title="Language"><option value="de">DE</option><option value="en">EN</option></select>
 </header>
-<p class="sub" data-i18n="n.sub">Discord-Nachricht zur exakten Zeit – nur Text, nur für dich</p>
 
 <section>
 <h2 data-i18n="n.cycle">Zyklus</h2>
@@ -422,7 +484,6 @@ button.pkd.on {
 </div>
 <div class="sync" id="sync"></div>
 <div class="status" id="st"></div>
-<p class="hint" data-i18n="n.hint">Die Discord-Webhook-URL bleibt geheim in Cloudflare – hier nie eintragen.</p>
 </section>
 
 <script>
@@ -435,7 +496,6 @@ button.pkd.on {
     "n.search": {"en": "Search…", "de": "Suche…"},
     "n.none": {"en": "Nothing found.", "de": "Nichts gefunden."},
     "n.title": {"en": "Schedule reminders", "de": "Zeitplan-Erinnerungen"},
-    "n.sub": {"en": "Discord message at the exact time – text only, only for you", "de": "Discord-Nachricht zur exakten Zeit – nur Text, nur für dich"},
     "n.cycle": {"en": "Cycle", "de": "Zyklus"},
     "n.anchor": {"en": "Cycle start (first day)", "de": "Zyklusstart (erster Tag)"},
     "n.length": {"en": "Cycle length", "de": "Zykluslänge"},
@@ -451,6 +511,7 @@ button.pkd.on {
     "n.textPh": {"en": "Message text", "de": "Nachrichtentext"},
     "n.on": {"en": "Active", "de": "Aktiv"},
     "n.del": {"en": "Delete", "de": "Löschen"},
+    "n.time": {"en": "Time", "de": "Uhrzeit"},
     "n.outside": {"en": "Day is outside the cycle – ignored", "de": "Tag liegt außerhalb des Zyklus – wird ignoriert"},
     "n.preview": {"en": "Next messages", "de": "Nächste Nachrichten"},
     "n.noPreview": {"en": "Nothing scheduled.", "de": "Nichts geplant."},
@@ -468,7 +529,6 @@ button.pkd.on {
     "n.loadOk": {"en": "Loaded {n} entries from the Worker.", "de": "{n} Einträge vom Worker geladen."},
     "n.failed": {"en": "Failed: {msg}", "de": "Fehlgeschlagen: {msg}"},
     "n.confirmLoad": {"en": "Replace the local schedule with the one from the Worker?", "de": "Lokalen Zeitplan durch den des Workers ersetzen?"},
-    "n.hint": {"en": "The Discord webhook URL stays secret in Cloudflare – never enter it here.", "de": "Die Discord-Webhook-URL bleibt geheim in Cloudflare – hier nie eintragen."}
   }
 };
 </script><script>
@@ -498,22 +558,23 @@ function pkOpen(o) {
     q = (s) => document.querySelector(s),
     a = document.createElement("div");
   // kurze Listen (Sprache, Layouts …) als Dialog in der Mitte, lange als Sheet unten
-  a.className = "pkov" + ((o.mid ?? (!o.multi && o.items.length <= 8)) ? " mid" : "");
+  a.className = "pkov" + ((o.mid ?? (!o.multi && !o.mu && o.items.length <= 8)) ? " mid" : "");
   const many = o.items.length > 14 && !o.nosearch,
     draw = () => {
       const f = (q("#pkq") ? q("#pkq").value : "").trim().toLowerCase(),
-        row = (v, t, all) =>
-          `<div class="pkr${o.sel(v, all) ? " on" : ""}${o.multi ? " mu" : ""}" data-v="${pkEsc(v)}"${all ? ' data-all="1"' : ""}><span>${pkEsc(t)}</span><i class="ck"></i></div>`;
+        // o.mu(v, gruppe) macht einzelne Zeilen zu Häkchen-Zeilen (Sheet bleibt offen), die übrigen wählen einfach und schließen
+        row = (v, t, all, grp) =>
+          `<div class="pkr${o.sel(v, all) ? " on" : ""}${(o.mu ? o.mu(v, grp) : o.multi) ? " mu" : ""}" data-v="${pkEsc(v)}"${all ? ' data-all="1"' : ""}><span>${pkEsc(t)}</span><i class="ck"></i></div>`;
       let g = null,
         h = o.all && !f ? row("", o.all, true) : "";
       for (const [v, t, grp] of o.items) {
         if (f && !t.toLowerCase().includes(f)) continue;
         grp !== g && ((g = grp), grp && (h += `<h2>${pkEsc(grp)}</h2>`));
-        h += row(v, t);
+        h += row(v, t, false, grp);
       }
       q("#pkl").innerHTML = h || `<div class="pkn">${pkEsc(L.none)}</div>`;
     };
-  a.innerHTML = `<div class="card pksh"><div class="pkh"><div class="pkt"><b>${pkEsc(o.title || "")}</b>${o.multi ? `<button class="s" id="pkd">${pkEsc(L.done)}</button>` : ""}</div>${many ? `<input id="pkq" type="search" placeholder="${pkEsc(L.ph)}" style="margin-top:8px;width:100%">` : ""}</div><div id="pkl"></div></div>`;
+  a.innerHTML = `<div class="card pksh"><div class="pkh"><div class="pkt"><b>${pkEsc(o.title || "")}</b>${o.multi || o.mu ? `<button class="s" id="pkd">${pkEsc(L.done)}</button>` : ""}</div>${many ? `<input id="pkq" type="search" placeholder="${pkEsc(L.ph)}" style="margin-top:8px;width:100%">` : ""}</div><div id="pkl"></div></div>`;
   document.body.appendChild(a);
   draw();
   const sc = a.querySelector(".pksh"),
@@ -524,7 +585,7 @@ function pkOpen(o) {
     const r = e.target.closest(".pkr");
     if (!r) return;
     o.pick(r.dataset.v, !!r.dataset.all);
-    if (o.multi) {
+    if (r.classList.contains("mu")) {
       const y = sc.scrollTop;
       draw();
       sc.scrollTop = y;
@@ -668,6 +729,72 @@ function enhDate(root) {
     b.onclick = () =>
       pkDate({
         title: s.closest("label") ? s.closest("label").firstElementChild.textContent : "",
+        value: s.value,
+        pick: (v) => {
+          s.value = v;
+          s.dispatchEvent(new Event("change"));
+        },
+      });
+  });
+}
+// Zeitwähler im App-Design statt des Android-Uhrdialogs: o = {title, value "HH:MM", pick(wert)}; Stunden 0–23, Minuten in 5er-Schritten + ±1
+function pkTime(o) {
+  const L = PKL(),
+    p2 = (n) => String(n).padStart(2, "0"),
+    a = document.createElement("div");
+  let [h, m] = /^\d{2}:\d{2}$/.test(o.value || "") ? o.value.split(":").map(Number) : [18, 0];
+  a.className = "pkov mid";
+  const draw = () => {
+    let x = `<div class="pktm"><b>${p2(h)}:${p2(m)}</b></div><div class="pkcal pkh6">`;
+    for (let i = 0; i < 24; i++)
+      x += `<button type="button" class="pkd${i == h ? " on" : ""}" data-h="${i}">${p2(i)}</button>`;
+    x += `</div><div class="pkcal pkh6">`;
+    for (let i = 0; i < 60; i += 5)
+      x += `<button type="button" class="pkd${i == m ? " on" : ""}" data-m="${i}">${p2(i)}</button>`;
+    x += `</div><div class="pkfine"><button type="button" class="s" data-d="-1">−1 min</button><button type="button" class="s" data-d="1">+1 min</button></div>`;
+    a.querySelector(".pkb").innerHTML = x;
+  };
+  a.innerHTML = `<div class="card pksh"><div class="pkh"><div class="pkt"><b>${pkEsc(o.title || "")}</b><button type="button" class="s" data-ok="1">${pkEsc(L.done)}</button></div></div><div class="pkb"></div></div>`;
+  document.body.appendChild(a);
+  draw();
+  a.onclick = (e) => {
+    if (e.target === a) return a.remove();
+    const t = e.target.closest("button");
+    if (!t) return;
+    if (t.dataset.ok) return (o.pick(`${p2(h)}:${p2(m)}`), a.remove());
+    if (t.dataset.h) h = +t.dataset.h;
+    if (t.dataset.m) m = +t.dataset.m;
+    if (t.dataset.d) {
+      const v = (((h * 60 + m + +t.dataset.d) % 1440) + 1440) % 1440;
+      ((h = Math.floor(v / 60)), (m = v % 60));
+    }
+    draw();
+  };
+}
+function enhTime(root) {
+  (root || document).querySelectorAll("input[type=time]").forEach((s) => {
+    if (s._pk) return (s._pk.textContent = s.value || "–");
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "pk tm";
+    s.style.display = "none";
+    s.after(b);
+    s._pk = b;
+    const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+    Object.defineProperty(s, "value", {
+      configurable: true,
+      get() {
+        return d.get.call(this);
+      },
+      set(v) {
+        d.set.call(this, v);
+        b.textContent = this.value || "–";
+      },
+    });
+    b.textContent = s.value || "–";
+    b.onclick = () =>
+      pkTime({
+        title: s.title || "",
         value: s.value,
         pick: (v) => {
           s.value = v;
@@ -840,6 +967,7 @@ function renderEntries() {
     day.value = e.day;
     day.onchange = () => ((e.day = +day.value), save(), renderAll());
     time.type = "time";
+    time.title = tl("n.time");
     time.value = e.time;
     time.onchange = () =>
       time.value ? ((e.time = time.value), sortEntries(), save(), renderAll()) : (time.value = e.time);
@@ -900,6 +1028,7 @@ function renderAll() {
   $("tz").title = tl("n.tz");
   enhSel();
   enhDate();
+  enhTime();
 }
 function langUI() {
   $("lgs").value = LG;
