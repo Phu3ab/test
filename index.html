@@ -1058,7 +1058,7 @@ function lgBuild() {
         sh = m > 200 && L > 100 ? LG_GOLD : LG_COPPER;
       rows[L] = [tot, ...sh.map((x) => pool * x)];
     }
-    D[ab] = { faktor: 1.2, max: m, rows };
+    D[ab] = { faktor: 1.84, faktorGold: m > 200 ? 1.2 : null, max: m, rows };
   }
   return D;
 }
@@ -1613,7 +1613,6 @@ const NAMES = {
     "WF",
     "Zeus",
   ],
-  STANDARD_FAKTOR = 1.2,
   DEFAULT_LEVELS = {
     AD: 0,
     Alca: 0,
@@ -1720,16 +1719,21 @@ function fkObj(a) {
 }
 function setFk(a, patch) {
   const o = Object.assign(fkObj(a), patch);
-  if (o.f != null && DATA[a] && Math.abs(o.f - DATA[a].faktor) < 1e-9) o.f = null;
+  if (o.f != null && DATA[a] && Math.abs(o.f - defaultFaktor(a, levels[a])) < 1e-9) o.f = null;
   if (o.pp || o.p.some((v) => v != null)) faktoren[a] = { f: o.f, pp: o.pp, p: o.p };
   else if (o.f != null) faktoren[a] = o.f;
   else delete faktoren[a];
 }
-function effectiveFaktor(a) {
+// Standard-Faktor: Kupfer 1,84 (Kupfer-Gebäude, Gold-Gebäude bis Stufe 100), Gold 1,2 (Gold-Gebäude ab Stufe 101)
+function defaultFaktor(a, L) {
+  const e = DATA[a];
+  return e.faktorGold && L > 100 ? e.faktorGold : e.faktor;
+}
+function effectiveFaktor(a, L = levels[a]) {
   const e = DATA[a];
   if (!e) return null;
   const t = fkObj(a).f;
-  return t != null ? t : e.faktor;
+  return t != null ? t : defaultFaktor(a, L);
 }
 // Zusatzkosten: Zahl formatieren, Zeile "Kupfer-BP-Sets 3 · Münzen 2.253.489 …" (nur Werte > 0)
 function xFmt(n) {
@@ -1744,9 +1748,9 @@ function placeVal(row, k) {
   return k <= 5 ? row[k - 1] : row[k];
 }
 // Faktor je Platz P1..P5 (ohne „pro Platz“ überall der gleiche; leere Felder = Hauptfaktor)
-function placeFaktoren(a) {
+function placeFaktoren(a, L) {
   const o = fkObj(a),
-    b = effectiveFaktor(a);
+    b = effectiveFaktor(a, L);
   return [0, 1, 2, 3, 4].map((j) => (o.pp && o.p[j] != null ? o.p[j] : b));
 }
 function getRow(a, e) {
@@ -1755,7 +1759,7 @@ function getRow(a, e) {
   const n = t.rows[String(e)];
   if (!n) return null;
   const [r, o, s, i, u, c, p6 = 0, p7 = 0] = n,
-    d = placeFaktoren(a),
+    d = placeFaktoren(a, e),
     l = [o, s, i, u, c].map((m, j) => Math.round(m * d[j])),
     x = [p6, p7].map((m) => Math.round(m * d[4])),
     f = r - l.reduce((m, g) => m + g, 0) - x[0] - x[1];
@@ -1862,6 +1866,7 @@ function getRow(a, e) {
     "x.level": {"en": "Level", "de": "Stufe"},
     "x.upTo": {"en": "up to level", "de": "bis Stufe"},
     "x.none": {"en": "none", "de": "keine"},
+    "x.groupSum": {"en": "Group total", "de": "Summe Gruppe"},
     "x.sum": {"en": "Total levels {a}–{b}", "de": "Summe Stufe {a}–{b}"},
     "x.per": {"en": "Per level (not cumulative)", "de": "Je Stufe (nicht kumulativ)"},
     "x.cum": {"en": "Cumulative", "de": "Kumulativ"},
@@ -2120,13 +2125,18 @@ function renderSniper() {
       });
     }));
 }
-function xcostHTML(a, L) {
-  const open = (collapsed.xopen || {})[a] ? " open" : "",
-    body =
-      L >= 1 && DATA[a] && L <= DATA[a].max
-        ? `<div class="xrow"><span>${tl("x.level")} ${L}</span>${xLine(lgExtra(a, L))}</div><div class="xrow"><span>${tl("x.upTo")} ${L}</span>${xLine(lgExtraSum(a, 1, L))}</div>`
-        : `<div class="xrow">${tl("x.none")}</div>`;
-  return `<details class="xcost" data-abbr="${a}"${open}><summary>${tl("x.title")}</summary>${body}</details>`;
+// Zusatzkosten einer Gruppe (ausklappbar): je Gebäude die Kosten der eingestellten Stufe, bei mehreren Gebäuden zusätzlich die Summe
+function xcostGroupHTML(g, r) {
+  const sum = { cs: 0, gs: 0, c: 0, su: 0, me: 0, go: 0 },
+    rows = r
+      .filter((a) => levels[a] >= 1 && DATA[a] && levels[a] <= DATA[a].max)
+      .map((a) => {
+        const x = lgExtra(a, levels[a]);
+        for (const k of LGX_FIELDS) sum[k] += x[k];
+        return `<div class="xrow"><span>${AB(a)} · ${tl("x.level")} ${levels[a]}</span>${xLine(x)}</div>`;
+      });
+  rows.length > 1 && rows.push(`<div class="xrow"><span>${tl("x.groupSum")}</span>${xLine(sum)}</div>`);
+  return `<details class="xcost" data-gid="${g.id}"${(collapsed.xopen || {})[g.id] ? " open" : ""}><summary>${tl("x.title")}</summary>${rows.join("") || `<div class="xrow">${tl("x.none")}</div>`}</details>`;
 }
 function renderBuildings() {
   renderSniper();
@@ -2139,7 +2149,7 @@ function renderBuildings() {
         r = effectiveFaktor(e),
         fo = fkObj(e);
       ((t.style.borderColor = colorForFaktor(r)),
-        (Math.abs(r - STANDARD_FAKTOR) > 1e-9 || fo.pp) && (t.style.borderWidth = "2px"));
+        (Math.abs(r - defaultFaktor(e, levels[e])) > 1e-9 || fo.pp) && (t.style.borderWidth = "2px"));
       const o = groups
         .map(
           (s) =>
@@ -2154,17 +2164,9 @@ function renderBuildings() {
 </label>
 <label class="pp-toggle"><input type="checkbox" data-abbr="${e}" class="pp-check"${fo.pp ? " checked" : ""} /> ${tl("pl.perPlace")}</label>
 ${fo.pp ? `<div class="pp-row">${[0, 1, 2, 3, 4].map((d) => `<div class="pp-cell"><span>P${d + 1}</span><input type="number" min="0" step="0.01" placeholder="${r}" value="${fo.p[d] != null ? fo.p[d] : ""}" data-abbr="${e}" data-n="${d}" class="pfaktor-input" /></div>`).join("")}</div>` : ""}
-${xcostHTML(e, levels[e])}
 <div class="group-chips">${o}</div>
 `),
         a.appendChild(t));
-    }),
-    a.querySelectorAll("details.xcost").forEach((e) => {
-      e.addEventListener("toggle", () => {
-        const k = e.dataset.abbr;
-        collapsed.xopen || (collapsed.xopen = {});
-        !!collapsed.xopen[k] !== e.open && (e.open ? (collapsed.xopen[k] = 1) : delete collapsed.xopen[k], saveAll());
-      });
     }),
     a.querySelectorAll(".lvl-input").forEach((e) => {
       e.addEventListener("change", (t) => {
@@ -2448,13 +2450,20 @@ ${h < c.length - 1 ? '<div style="height:18px;border-bottom:1px solid var(--bord
 <span><span class="go-arrow">▼</span>${groupName(n.name)} (${tl(r.length === 1 ? "lg.gbOne" : "lg.gbMany", { n: r.length })})<span class="lvlline">${r.map((p) => AB(p) + " " + levels[p]).join(" · ")}</span></span>
 <button class="secondary plus1" id="${i}" ${r.length ? "" : "disabled"}>+1 (${groupName(n.name)})</button>
 </div>
-<div class="go-body">${l}${gmixHTML(n, r)}</div>
+<div class="go-body">${l}${xcostGroupHTML(n, r)}${gmixHTML(n, r)}</div>
 `),
       a.appendChild(o),
       f.forEach((p) => {
         wireCopyButton(p.btn2id, p.t2id, sig);
       }),
       wireGMix(o, n, r),
+      o.querySelectorAll("details.xcost").forEach((x) => {
+        x.addEventListener("toggle", () => {
+          collapsed.xopen || (collapsed.xopen = {});
+          !!collapsed.xopen[n.id] !== x.open &&
+            (x.open ? (collapsed.xopen[n.id] = 1) : delete collapsed.xopen[n.id], saveAll());
+        });
+      }),
       markCopied(o),
       o.querySelector(".group-output-title").addEventListener("click", (p) => {
         p.target.closest("button") ||
@@ -3077,7 +3086,7 @@ function plInit() {
     const [r, d, m, v, s, h, p6 = 0, p7 = 0] = l,
       w = (j) => {
         const q = Array.isArray(t) ? t[Math.min(j, 4)] : t;
-        return typeof q == "number" && !isNaN(q) && q > 0 ? q : o.faktor;
+        return typeof q == "number" && !isNaN(q) && q > 0 ? q : defaultFaktor(a, e);
       },
       b = [d, m, v, s, h, p6, p7].map((k, j) => Math.round(k * w(j))),
       B = r - b.reduce((k, C) => k + C, 0);
@@ -3098,7 +3107,7 @@ function plInit() {
   }
   function T(a) {
     const e = f(a);
-    return typeof e.faktor == "number" && !isNaN(e.faktor) && e.faktor > 0 ? e.faktor : DATA[a].faktor;
+    return typeof e.faktor == "number" && !isNaN(e.faktor) && e.faktor > 0 ? e.faktor : null;
   }
   function TP(a) {
     const e = f(a),
@@ -3233,8 +3242,8 @@ function plInit() {
 <input type="number" min="0" placeholder="${tl("pl.to")}" value="${t.to}" data-abbr="${e}" data-field="to" />
 </div>
 <div class="chips">${l}</div>
-<div class="faktor-row"><input type="number" min="1" step="0.01" value="${o}" data-abbr="${e}" data-field="faktor" /><label class="pp-toggle"><input type="checkbox" data-abbr="${e}" data-field="perPlace"${t.perPlace ? " checked" : ""} /> ${tl("pl.perPlace")}</label></div>
-${t.perPlace ? `<div class="pp-row">${[0, 1, 2, 3, 4].map((d) => `<div class="pp-cell"><span>P${d + 1}</span><input type="number" min="0" step="0.01" placeholder="${o}" value="${typeof t.faktoren[d] == "number" ? t.faktoren[d] : ""}" data-abbr="${e}" data-field="pfaktor" data-n="${d}" /></div>`).join("")}</div>` : ""}
+<div class="faktor-row"><input type="number" min="1" step="0.01" value="${o == null ? "" : o}" placeholder="${DATA[e].faktorGold ? DATA[e].faktor + " / " + DATA[e].faktorGold : DATA[e].faktor}" data-abbr="${e}" data-field="faktor" /><label class="pp-toggle"><input type="checkbox" data-abbr="${e}" data-field="perPlace"${t.perPlace ? " checked" : ""} /> ${tl("pl.perPlace")}</label></div>
+${t.perPlace ? `<div class="pp-row">${[0, 1, 2, 3, 4].map((d) => `<div class="pp-cell"><span>P${d + 1}</span><input type="number" min="0" step="0.01" placeholder="${o == null ? DATA[e].faktor : o}" value="${typeof t.faktoren[d] == "number" ? t.faktoren[d] : ""}" data-abbr="${e}" data-field="pfaktor" data-n="${d}" /></div>`).join("")}</div>` : ""}
 `),
           a.appendChild(r));
       }),
@@ -3248,10 +3257,7 @@ ${t.perPlace ? `<div class="pp-row">${[0, 1, 2, 3, 4].map((d) => `<div class="pp
           const o = t.target.dataset.abbr,
             l = parseFloat(t.target.value.replace(",", ".")),
             r = f(o);
-          ((r.faktor = !isNaN(l) && l > 0 && Math.abs(l - DATA[o].faktor) > 1e-9 ? l : null),
-            f(o).perPlace && S(),
-            g(),
-            y());
+          ((r.faktor = !isNaN(l) && l > 0 ? l : null), f(o).perPlace && S(), g(), y());
         });
       }),
       a.querySelectorAll('input[data-field="perPlace"]').forEach((e) => {
