@@ -1735,13 +1735,13 @@ function effectiveFaktor(a, L = levels[a]) {
   const t = fkObj(a).f;
   return t != null ? t : defaultFaktor(a, L);
 }
-// Zusatzkosten: Zahl formatieren, Zeile "Kupfer-BP-Sets 3 · Münzen 2.253.489 …" (nur Werte > 0)
+// Zusatzkosten: Zahl formatieren, Zeile "Kupfer-BP-Sets 3 · Münzen 2.253.489 …" (alle sechs Arten, auch 0)
 function xFmt(n) {
   return n.toLocaleString(LNG == "de" ? "de-DE" : "en-US");
 }
 function xLine(x) {
-  const p = LGX_FIELDS.filter((k) => x[k] > 0).map((k) => `${tl("x." + k)} <span class="xn">${xFmt(x[k])}</span>`);
-  return p.length ? p.join(" · ") : tl("x.none");
+  const p = LGX_FIELDS.map((k) => `${tl("x." + k)} <span class="xn">${xFmt(x[k])}</span>`);
+  return p.join(" · ");
 }
 // Wert von Platz k (1..7) aus einer getRow-Zeile
 function placeVal(row, k) {
@@ -1869,7 +1869,6 @@ function getRow(a, e) {
     "x.groupSum": {"en": "Group total", "de": "Summe Gruppe"},
     "x.sum": {"en": "Total levels {a}–{b}", "de": "Summe Stufe {a}–{b}"},
     "x.per": {"en": "Per level (not cumulative)", "de": "Je Stufe (nicht kumulativ)"},
-    "x.cum": {"en": "Cumulative", "de": "Kumulativ"},
     "pl.contribPerLevel": {"en": "Contribution per level", "de": "Beitrag je Stufe"},
     "pl.copy": {"en": "Copy", "de": "Kopieren"},
     "pl.perPlace": {"en": "Factor per place", "de": "Faktor pro Platz"}
@@ -3309,16 +3308,14 @@ ${t.perPlace ? `<div class="pp-row">${[0, 1, 2, 3, 4].map((d) => `<div class="pp
   // Zusatzkosten: immer offen; Summe, je Stufe (nicht kumulativ) und kumulativ
   function xcostPanel(ab, lo, hi) {
     const rows = [],
-      cum = [],
       run = { cs: 0, gs: 0, c: 0, su: 0, me: 0, go: 0 };
     for (let L = lo; L <= hi; L++) {
       const x = DATA[ab].max >= L && L >= 1 ? lgExtra(ab, L) : null;
       if (!x) continue;
       for (const k of LGX_FIELDS) run[k] += x[k];
       rows.push(`<div><span class="xl">${tl("x.level")} ${L}</span> ${xLine(x)}</div>`);
-      cum.push(`<div><span class="xl">${tl("x.level")} ${L}</span> ${xLine(run)}</div>`);
     }
-    return `<div class="xcostbox"><label class="small">${tl("x.title")} · ${tl("x.sum", { a: lo, b: hi })}</label><div class="xout">${xLine(run)}</div><label class="small">${tl("x.per")}</label><div class="xout xscroll">${rows.join("") || tl("x.none")}</div><label class="small">${tl("x.cum")}</label><div class="xout xscroll">${cum.join("") || tl("x.none")}</div></div>`;
+    return `<div class="xcostbox"><label class="small">${tl("x.title")} · ${tl("x.sum", { a: lo, b: hi })}</label><div class="xout">${xLine(run)}</div><label class="small">${tl("x.per")}</label><div class="xout xscroll">${rows.join("") || tl("x.none")}</div></div>`;
   }
   function y() {
     const a = n.getElementById("outputs");
