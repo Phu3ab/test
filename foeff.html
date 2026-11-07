@@ -2207,7 +2207,7 @@ function rIm(e, save) {
           .join(" ");
       if (B) {
         h || (h = ["csv:" + r, nrm(r), "", "CSV", "0x0", 0, 0, 0, {}]);
-        for (const [b, L] of Object.entries(B.v)) h[8][b] = (h[8][b] || 0) + L;
+        for (const [b, L] of Object.entries(B.v)) h[8][b] || (h[8][b] = L);
       }
       if (h) {
         for (const [b, L] of Object.entries(h[8])) l[b] = (l[b] || 0) + p * L;
@@ -2610,6 +2610,7 @@ const XNS = typeof XN < "u" ? XN : new Set(),
     CC: "Cape",
     CdM: "CDM",
     SG: "Gazer",
+    SHS: "Siphon",
     TA: "TA",
     Pegasus: "Pegasus",
     Centaurus: "Centaurus",
@@ -2629,6 +2630,8 @@ const LGK = {
   "saturn vi gate pegasus": "Pegasus",
   "saturn vi tor pegasus": "Pegasus",
   "star gazer": "Gazer",
+  "shattered horizon siphon": "Siphon",
+  "horizontriss-siphon": "Siphon",
   "statue of zeus": "Zeus",
   zeusstatue: "Zeus",
   "voyager v1": "Voyager",

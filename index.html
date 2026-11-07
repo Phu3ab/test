@@ -1030,6 +1030,7 @@ const LGN = {
     Pegasus: [200, 218, 104, 168, 408, 1129, 1247],
     Katalysator: [200, 1000, 475, 771, 1864, 5165, 420],
     Kriegsschiff: [200, 1241, 590, 957, 2316, 6415, 156],
+    Siphon: [300, 4150, 4150, 4150, 4150, 6225, 4150],
   },
   // Beitragsbelohnung = Stufenkosten × Bandanteil (Stufenbereich) × Platzanteil; Kupfer 5 Plätze, Gold ab Stufe 101 7 Plätze; rows[L] = [Kosten, P1..P7] (Faktor 1)
   LG_BANDS = [
@@ -1056,7 +1057,8 @@ function lgBuild() {
       while (L > LG_BANDS[b][0]) b++;
       const pool = tot * LG_BANDS[b][1],
         sh = m > 200 && L > 100 ? LG_GOLD : LG_COPPER;
-      rows[L] = [tot, ...sh.map((x) => pool * x)];
+      // Basiswert je Platz auf ganze FP gerundet (wie im Spiel); der Förderfaktor wird erst danach angewendet
+      rows[L] = [tot, ...sh.map((x) => Math.round(pool * x))];
     }
     D[ab] = { faktor: 1.84, faktorGold: m > 200 ? 1.2 : null, max: m, rows };
   }
@@ -1500,6 +1502,7 @@ const ABB_EN = {
   Cape: "CC",
   CDM: "CdM",
   Gazer: "SG",
+  Siphon: "SHS",
   TA: "TA",
   Pegasus: "Pegasus",
   Centaurus: "Centaurus",
@@ -1562,6 +1565,7 @@ const NAMES = {
     Pegasus: "Saturn VI Tor PEGASUS",
     Hydra: "Saturn VI Tor HYDRA",
     Kriegsschiff: "Stellares Kriegsschiff",
+    Siphon: "Horizontriss-Siphon",
   },
   ORDER = [
     "AD",
@@ -1586,6 +1590,7 @@ const NAMES = {
     "Gaea",
     "Galata",
     "Hagia",
+    "Siphon",
     "Inno",
     "K.I.",
     "Kapitol",
@@ -1657,6 +1662,7 @@ const NAMES = {
     Needle: 0,
     Gazer: 0,
     Kriegsschiff: 0,
+    Siphon: 0,
     TA: 0,
     Babel: 0,
     Voyager: 0,
@@ -1866,9 +1872,8 @@ function getRow(a, e) {
     "x.level": {"en": "Level", "de": "Stufe"},
     "x.upTo": {"en": "up to level", "de": "bis Stufe"},
     "x.none": {"en": "none", "de": "keine"},
-    "x.groupSum": {"en": "Group total", "de": "Summe Gruppe"},
     "x.sum": {"en": "Total levels {a}–{b}", "de": "Summe Stufe {a}–{b}"},
-    "x.per": {"en": "Per level (not cumulative)", "de": "Je Stufe (nicht kumulativ)"},
+    "x.per": {"en": "Per level", "de": "Je Stufe"},
     "pl.contribPerLevel": {"en": "Contribution per level", "de": "Beitrag je Stufe"},
     "pl.copy": {"en": "Copy", "de": "Kopieren"},
     "pl.perPlace": {"en": "Factor per place", "de": "Faktor pro Platz"}
@@ -1921,7 +1926,8 @@ function getRow(a, e) {
     "Insel": "Flying Island",
     "Pegasus": "Saturn VI Gate PEGASUS",
     "Hydra": "Saturn VI Gate HYDRA",
-    "Kriegsschiff": "Stellar Warship"
+    "Kriegsschiff": "Stellar Warship",
+    "Siphon": "Shattered Horizon Siphon"
   }
 };
 </script><script>
@@ -2124,17 +2130,13 @@ function renderSniper() {
       });
     }));
 }
-// Zusatzkosten einer Gruppe (ausklappbar): je Gebäude die Kosten der eingestellten Stufe, bei mehreren Gebäuden zusätzlich die Summe
+// Zusatzkosten einer Gruppe (ausklappbar): je Gebäude die Kosten der eingestellten Stufe
 function xcostGroupHTML(g, r) {
-  const sum = { cs: 0, gs: 0, c: 0, su: 0, me: 0, go: 0 },
-    rows = r
-      .filter((a) => levels[a] >= 1 && DATA[a] && levels[a] <= DATA[a].max)
-      .map((a) => {
-        const x = lgExtra(a, levels[a]);
-        for (const k of LGX_FIELDS) sum[k] += x[k];
-        return `<div class="xrow"><span>${AB(a)} · ${tl("x.level")} ${levels[a]}</span>${xLine(x)}</div>`;
-      });
-  rows.length > 1 && rows.push(`<div class="xrow"><span>${tl("x.groupSum")}</span>${xLine(sum)}</div>`);
+  const rows = r
+    .filter((a) => levels[a] >= 1 && DATA[a] && levels[a] <= DATA[a].max)
+    .map((a) => {
+      return `<div class="xrow"><span>${AB(a)} · ${tl("x.level")} ${levels[a]}</span>${xLine(lgExtra(a, levels[a]))}</div>`;
+    });
   return `<details class="xcost" data-gid="${g.id}"${(collapsed.xopen || {})[g.id] ? " open" : ""}><summary>${tl("x.title")}</summary>${rows.join("") || `<div class="xrow">${tl("x.none")}</div>`}</details>`;
 }
 function renderBuildings() {
@@ -3315,7 +3317,10 @@ ${t.perPlace ? `<div class="pp-row">${[0, 1, 2, 3, 4].map((d) => `<div class="pp
       for (const k of LGX_FIELDS) run[k] += x[k];
       rows.push(`<div><span class="xl">${tl("x.level")} ${L}</span> ${xLine(x)}</div>`);
     }
-    return `<div class="xcostbox"><label class="small">${tl("x.title")} · ${tl("x.sum", { a: lo, b: hi })}</label><div class="xout">${xLine(run)}</div><label class="small">${tl("x.per")}</label><div class="xout xscroll">${rows.join("") || tl("x.none")}</div></div>`;
+    return {
+      sum: `<label class="small">${tl("x.title")} · ${tl("x.sum", { a: lo, b: hi })}</label><div class="xout">${xLine(run)}</div>`,
+      per: `<label class="small">${tl("x.per")}</label><div class="xout xscroll">${rows.join("") || tl("x.none")}</div>`,
+    };
   }
   function y() {
     const a = n.getElementById("outputs");
@@ -3339,7 +3344,8 @@ ${t.perPlace ? `<div class="pp-row">${[0, 1, 2, 3, 4].map((d) => `<div class="pp
               `<div class="lvl-block" data-k="${e}:${b}"><div class="lvl-label">${tl("pl.level")} ${b}${B ? "" : `<div class="lvl-own">${tl("pl.ownShort")}<span class="num">${k}</span></div>`}</div><div class="txt">${M}</div><button class="lvl-copy" title="${tl("pl.copy")}">📋</button></div>`,
             ));
         }
-        const w = document.createElement("div");
+        const w = document.createElement("div"),
+          xc = xcostPanel(e, o, l);
         ((w.className = "panel out-panel" + (d ? " collapsed" : "")),
           (w.innerHTML = `
 <h2 class="section collapsible-header out-header" data-oabbr="${e}">
@@ -3350,12 +3356,13 @@ ${t.perPlace ? `<div class="pp-row">${[0, 1, 2, 3, 4].map((d) => `<div class="pp
 <span class="num">${m}</span>
 <span class="label">${tl("pl.totalOwn", { a: o, b: l })}${v ? ` <span class="warn">${tl("pl.incomplete")}</span>` : ""}</span>
 </div>
+${xc.sum}
+${xc.per}
 <label class="small">${tl("pl.ownPerLevel")}</label>
 <div class="out">${s.join(`
 `)}</div>
 <label class="small">${tl("pl.contribPerLevel")}</label>
 ${h.join("")}
-${xcostPanel(e, o, l)}
 </div>
 `),
           a.appendChild(w));
