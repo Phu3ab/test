@@ -2223,7 +2223,7 @@ function rIm(e, save) {
           .join(" ");
       if (B) {
         h || (h = ["csv:" + r, nrm(r), "", "CSV", "0x0", 0, 0, 0, {}]);
-        for (const [b, L] of Object.entries(B.v)) h[8][b] || (h[8][b] = L);
+        h[8] = { ...B.v };
       }
       if (h) {
         for (const [b, L] of Object.entries(h[8])) l[b] = (l[b] || 0) + p * L;
@@ -2668,8 +2668,14 @@ function lgl(e) {
     t = CA[LGA[n]] || LGK[n];
   return Math.round(+(LGR && LGR[t])) || 0;
 }
+function lgKey(e) {
+  const n = nrm(e).toLowerCase();
+  if (LGA[n]) return LGA[n];
+  const k = LGK[n];
+  return k && Object.keys(CA).find((a) => CA[a] == k);
+}
 function lgi(e, t) {
-  const n = LGA[nrm(e).toLowerCase()],
+  const n = lgKey(e),
     s = n && typeof LGI < "u" && LGI[n];
   if (!s) return 0;
   const a = s.i.filter((l) => t[l]);
@@ -2688,7 +2694,7 @@ function lgi(e, t) {
   );
 }
 function lgv(e, t) {
-  const n = LGA[nrm(e).toLowerCase()],
+  const n = lgKey(e),
     s = n && LGV[n];
   if (((t = Math.round(+t)), !s || !(t >= 1))) return null;
   const a = s.v.length,
