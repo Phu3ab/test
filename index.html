@@ -530,6 +530,52 @@ body.pl #plHost {
 #tabs button.on {
   color: #d4a94b;
 }
+#tabs button {
+  position: relative;
+}
+#tabs button::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 28%;
+  right: 28%;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: #d4a94b;
+  transform: scaleX(0);
+  transition: transform 0.25s ease;
+}
+#tabs button.on::before {
+  transform: scaleX(1);
+}
+@keyframes tabBounce {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  40% {
+    transform: translateY(-4px) scale(1.18);
+  }
+  100% {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  #tabs button {
+    transition:
+      color 0.2s ease,
+      transform 0.12s ease;
+  }
+  #tabs button:active {
+    transform: scale(0.92);
+  }
+  #tabs button.on span:first-child {
+    animation: tabBounce 0.4s ease;
+  }
+  #feWrap:not([hidden]),
+  #plHost {
+    animation: fadeIn 0.25s ease both;
+  }
+}
 #feWrap {
   position: fixed;
   left: 0;

@@ -3379,7 +3379,7 @@ function vKits() {
 // Daten: DATA.jLGC (aus tools/gen_jlgc.js), Effekte: DATA.jLGV/jLGI. Ladereihenfolge: siehe <script>-Tags in foeff.html.
 const LGC = DATA.jLGC,
   LGXF = ["cs", "gs", "c", "su", "me", "go"],
-  lgName = (a) => trn(LGC.NM[a] || a),
+  lgName = (a) => (LG == "en" && LGC.NE[a]) || trn(LGC.NM[a] || a),
   lgSheet = (a) => Object.keys(CA).find((k) => CA[k] == a),
   lgMax = (a) => LGC.N[a][0],
   lgEffTab = (a) => {
