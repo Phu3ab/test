@@ -213,6 +213,45 @@ td + td {
     box-shadow: 0 0 0 2px rgba(212, 169, 75, 0.35);
   }
 }
+
+/* Ein-/Ausklappen animiert (Chrome: interpolate-size; sonst springt es wie vorher) */
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    interpolate-size: allow-keywords;
+  }
+  .panel-body,
+  .go-body {
+    overflow: hidden;
+    height: auto;
+    transition:
+      height 0.3s ease,
+      opacity 0.25s ease,
+      visibility 0.3s;
+  }
+  .panel.collapsed .panel-body,
+  .group-output-panel.collapsed .go-body {
+    display: block;
+    height: 0;
+    opacity: 0;
+    visibility: hidden;
+    margin: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  details::details-content {
+    block-size: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition:
+      block-size 0.3s ease,
+      opacity 0.25s ease,
+      content-visibility 0.3s allow-discrete;
+  }
+  details[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+  }
+}
 </style><style>
 /* Gemeinsame Auswahl (js/pick.js). Erwartet die Variablen --in --t --b --m --c --a --a2 der Seite. */
 button.pk {

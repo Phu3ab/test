@@ -3401,14 +3401,6 @@ function lgExtraAt(a, L) {
     co = g("co");
   return { cs: g("cs"), gs: g("gs"), c: co || g("c"), su: co || g("su"), me: g("me"), go: g("go") };
 }
-function lgExtraSumTo(a, L) {
-  const t = { cs: 0, gs: 0, c: 0, su: 0, me: 0, go: 0 };
-  for (let l = 1; l <= L; l++) {
-    const x = lgExtraAt(a, l);
-    for (const k of LGXF) t[k] += x[k];
-  }
-  return t;
-}
 const lgOpts = (sel) =>
   LGC.O.filter((a) => LGC.N[a])
     .map((a) => `<option value="${a}"${a == sel ? " selected" : ""}>${esc(lgName(a))}</option>`)
@@ -3419,10 +3411,6 @@ const lgEffRow = (a, L) => {
   const row = V.v[Math.min(L, V.v.length) - 1];
   return V.i.map((q, j) => [q, row[j]]).filter((x) => x[1]);
 };
-const lgXLine = (x) =>
-  LGXF.filter((k) => x[k])
-    .map((k) => `${fmt(x[k], 0)} ${tl("f.lg." + k)}`)
-    .join(" · ") || "–";
 let lgSel = ls("lgSel", "AD"),
   lgLv = ls("lgLv", 100);
 function vLg() {
@@ -3438,9 +3426,7 @@ function vLg() {
     sv("lgSel", lgSel);
     sv("lgLv", lgLv);
     const c = lgCosts(lgSel),
-      sum = c.slice(1, lgLv + 1).reduce((s, x) => s + x, 0),
       x1 = lgExtraAt(lgSel, lgLv),
-      xs = lgExtraSumTo(lgSel, lgLv),
       ef = lgEffRow(lgSel, lgLv);
     let tw = 0;
     const er = (ef || [])
@@ -3452,8 +3438,8 @@ function vLg() {
       .join("");
     setHtml(
       $("#o"),
-      `<div class="card"><b>${esc(lgName(lgSel))} · ${tl("f.lg.levelN", { n: lgLv })}</b><div class="row"><span>${tl("f.lg.cost")}</span><span>${fmt(c[lgLv], 0)} FP</span></div><div class="row"><span>${tl("f.lg.cum")}</span><span>${fmt(sum, 0)} FP</span></div></div>` +
-        `<div class="card"><b>${tl("f.lg.extra")}</b><div class="row"><span>${tl("f.lg.thisLevel")}</span><span>${lgXLine(x1)}</span></div><div class="row"><span>${tl("f.lg.cum")}</span><span>${lgXLine(xs)}</span></div></div>` +
+      `<div class="card"><b>${esc(lgName(lgSel))} · ${tl("f.lg.levelN", { n: lgLv })}</b><div class="row"><span>${tl("f.lg.cost")}</span><span>${fmt(c[lgLv], 0)} FP</span></div></div>` +
+        `<div class="card"><b>${tl("f.lg.extra")}</b>${LGXF.map((k) => `<div class="row"><span>${tl("f.lg." + k)}</span><span>${x1[k] ? fmt(x1[k], 0) : "–"}</span></div>`).join("")}</div>` +
         `<div class="card"><b>${tl("f.lg.effects")}${ef && ef.length ? ` <span class="m">· ${tl("f.lg.weighted")}: ${fmt(tw)}</span>` : ""}</b>${er || `<div class="m">${tl("f.lg.noEff")}</div>`}</div>`,
     );
   };
@@ -3471,17 +3457,13 @@ function vLgt() {
       c = lgCosts(lgSel),
       V = lgEffTab(lgSel),
       idx = V ? V.i : [];
-    let cum = 0;
-    const cumX = { cs: 0, gs: 0, c: 0, su: 0, me: 0, go: 0 },
-      head = `<tr><th>${tl("f.lg.lv")}</th><th>FP</th><th>Σ FP</th><th>${tl("f.lg.extra")}</th>${idx.map((q) => `<th>${esc(trn(D.labels[q]))}</th>`).join("")}</tr>`,
+    const head = `<tr><th>${tl("f.lg.lv")}</th><th>FP</th>${LGXF.map((k) => `<th>${tl("f.lg." + k)}</th>`).join("")}${idx.map((q) => `<th>${esc(trn(D.labels[q]))}</th>`).join("")}</tr>`,
       body = [];
     for (let L = 1; L <= m; L++) {
-      cum += c[L];
       const x = lgExtraAt(lgSel, L),
         r = V ? V.v[Math.min(L, V.v.length) - 1] : [];
-      for (const k of LGXF) cumX[k] += x[k];
       body.push(
-        `<tr><td>${L}</td><td>${fmt(c[L], 0)}</td><td>${fmt(cum, 0)}</td><td>${lgXLine(x)}</td>${idx.map((q, j) => `<td>${r[j] ? fmt(r[j], 4) : ""}</td>`).join("")}</tr>`,
+        `<tr><td>${L}</td><td>${fmt(c[L], 0)}</td>${LGXF.map((k) => `<td>${x[k] ? fmt(x[k], 0) : ""}</td>`).join("")}${idx.map((q, j) => `<td>${r[j] ? fmt(r[j], 4) : ""}</td>`).join("")}</tr>`,
       );
     }
     setHtml(

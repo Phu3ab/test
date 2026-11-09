@@ -751,6 +751,45 @@ body.fe #lgSel + button.lgpk {
     animation: fadeIn 0.25s ease both;
   }
 }
+
+/* Ein-/Ausklappen animiert (Chrome: interpolate-size; sonst springt es wie vorher) */
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    interpolate-size: allow-keywords;
+  }
+  .panel-body,
+  .go-body {
+    overflow: hidden;
+    height: auto;
+    transition:
+      height 0.3s ease,
+      opacity 0.25s ease,
+      visibility 0.3s;
+  }
+  .panel.collapsed .panel-body,
+  .group-output-panel.collapsed .go-body {
+    display: block;
+    height: 0;
+    opacity: 0;
+    visibility: hidden;
+    margin: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  details::details-content {
+    block-size: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition:
+      block-size 0.3s ease,
+      opacity 0.25s ease,
+      content-visibility 0.3s allow-discrete;
+  }
+  details[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+  }
+}
 </style><style>
 /* Gemeinsame Auswahl (js/pick.js). Erwartet die Variablen --in --t --b --m --c --a --a2 der Seite. */
 button.pk {
@@ -3226,7 +3265,7 @@ function setView(n) {
 }
 function plInit() {
   const n = document.getElementById("plHost").attachShadow({ mode: "open" });
-  n.innerHTML = `<style>*{box-sizing:border-box}h1{font-size:1.3rem;margin:0 0 12px;color:var(--accent);letter-spacing:.5px}h2.section{font-size:1rem;color:var(--accent2);margin:0 0 10px}.collapsible-header{cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px}.collapse-arrow{display:inline-block;font-size:.75rem;transition:transform .15s ease}.panel.collapsed .collapse-arrow{transform:rotate(-90deg)}.panel.collapsed .panel-body{display:none}.panel.collapsed h2.section{margin-bottom:0}.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}.xout{background:#10141f;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:.78rem;line-height:1.55;margin-bottom:12px}.xscroll{max-height:220px;overflow:auto}.xout .xn{color:var(--accent)}.xout .xl{color:var(--muted);display:inline-block;min-width:4.2em}label.small{font-size:.78rem;color:var(--muted);display:block;margin-bottom:0}input[type=text],input[type=number]{background:#10141f;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 8px;font-size:.85rem}.playerbar{display:flex;align-items:center;gap:10px;margin-bottom:14px}.playerbar input{width:200px}.pl-buildings{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px}.pl-card{background:#1c2233;border:1px solid var(--border);border-radius:8px;padding:8px 10px}.pl-card .name{font-size:.72rem;color:var(--muted);margin-bottom:5px}.pl-card .lvl-row{display:flex;align-items:center;gap:5px;margin-bottom:5px}.pl-card .lvl-row input{width:100%;text-align:center;padding:4px}.pl-card .chips{display:flex;gap:3px;margin-bottom:5px}.place-chip{flex:1;text-align:center;padding:3px 0;font-size:.68rem;font-weight:600;background:#10141f;border:1px solid var(--border);color:var(--muted);border-radius:4px;cursor:pointer;user-select:none}.place-chip.active{background:var(--accent2);color:#10141f;border-color:var(--accent2)}.pl-card .faktor-row input[type=number]{width:100%;text-align:center;padding:3px;font-size:.78rem}.pp-toggle{display:flex;align-items:center;gap:5px;margin-top:5px;font-size:.7rem;color:var(--muted);cursor:pointer}.pp-toggle input{width:auto}.pp-row{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-top:5px}.pp-cell span{display:block;text-align:center;font-size:.62rem;color:var(--muted)}.pp-cell input{width:100%;text-align:center;padding:3px 1px;font-size:.72rem}.total-display{text-align:center;padding:6px 0 12px}.total-display .num{font-size:2.1rem;font-weight:700;color:var(--accent);display:block}.total-display .label{color:var(--muted);font-size:.8rem}.out{background:#10141f;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:Cascadia Code,Courier New,monospace;font-size:.8rem;line-height:1.6;white-space:pre-wrap;word-break:break-word;margin-bottom:12px}.out .lvl{color:var(--accent2)}.out .num{color:var(--accent)}.out .warn{color:#e07856}.lvl-block{background:#10141f;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-family:Cascadia Code,Courier New,monospace;font-size:.8rem;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.lvl-block .lvl-label{flex:0 0 auto;color:var(--accent2);min-width:58px}.lvl-block .lvl-own{margin-top:6px;font-size:.7rem;color:var(--muted)}.lvl-block .lvl-own .num{display:block;font-size:.8rem;font-weight:700;color:var(--accent)}.lvl-block .txt{flex:1 1 auto;white-space:pre-wrap;word-break:break-word;line-height:1.5}.lvl-block .txt .lvl{color:var(--accent2)}.lvl-block .txt .num{color:var(--accent)}.lvl-block .txt .warn{color:#e07856}.lvl-copy{flex:0 0 auto;font-size:.68rem;padding:4px 8px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:5px;cursor:pointer}button{background:var(--accent);color:#1a1f2e;border:none;padding:9px 16px;border-radius:7px;font-weight:600;cursor:pointer;font-size:.9rem}button.danger{background:transparent;color:#e07856;border:1px solid #e07856}button:active{transform:scale(.97)}.resetrow{text-align:center;margin-top:8px}@keyframes pu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}.panel,.pl-card,.lvl-block{animation:pu .3s ease both}input,button,.place-chip{transition:background-color .2s,border-color .2s,transform .12s}@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}</style><h1 data-i18n="pl.title">Powerlevel-Rechner</h1>
+  n.innerHTML = `<style>*{box-sizing:border-box}h1{font-size:1.3rem;margin:0 0 12px;color:var(--accent);letter-spacing:.5px}h2.section{font-size:1rem;color:var(--accent2);margin:0 0 10px}.collapsible-header{cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px}.collapse-arrow{display:inline-block;font-size:.75rem;transition:transform .15s ease}.panel.collapsed .collapse-arrow{transform:rotate(-90deg)}.panel.collapsed .panel-body{display:none}.panel.collapsed h2.section{margin-bottom:0}.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}.xout{background:#10141f;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:.78rem;line-height:1.55;margin-bottom:12px}.xscroll{max-height:220px;overflow:auto}.xout .xn{color:var(--accent)}.xout .xl{color:var(--muted);display:inline-block;min-width:4.2em}label.small{font-size:.78rem;color:var(--muted);display:block;margin-bottom:0}input[type=text],input[type=number]{background:#10141f;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 8px;font-size:.85rem}.playerbar{display:flex;align-items:center;gap:10px;margin-bottom:14px}.playerbar input{width:200px}.pl-buildings{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px}.pl-card{background:#1c2233;border:1px solid var(--border);border-radius:8px;padding:8px 10px}.pl-card .name{font-size:.72rem;color:var(--muted);margin-bottom:5px}.pl-card .lvl-row{display:flex;align-items:center;gap:5px;margin-bottom:5px}.pl-card .lvl-row input{width:100%;text-align:center;padding:4px}.pl-card .chips{display:flex;gap:3px;margin-bottom:5px}.place-chip{flex:1;text-align:center;padding:3px 0;font-size:.68rem;font-weight:600;background:#10141f;border:1px solid var(--border);color:var(--muted);border-radius:4px;cursor:pointer;user-select:none}.place-chip.active{background:var(--accent2);color:#10141f;border-color:var(--accent2)}.pl-card .faktor-row input[type=number]{width:100%;text-align:center;padding:3px;font-size:.78rem}.pp-toggle{display:flex;align-items:center;gap:5px;margin-top:5px;font-size:.7rem;color:var(--muted);cursor:pointer}.pp-toggle input{width:auto}.pp-row{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-top:5px}.pp-cell span{display:block;text-align:center;font-size:.62rem;color:var(--muted)}.pp-cell input{width:100%;text-align:center;padding:3px 1px;font-size:.72rem}.total-display{text-align:center;padding:6px 0 12px}.total-display .num{font-size:2.1rem;font-weight:700;color:var(--accent);display:block}.total-display .label{color:var(--muted);font-size:.8rem}.out{background:#10141f;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:Cascadia Code,Courier New,monospace;font-size:.8rem;line-height:1.6;white-space:pre-wrap;word-break:break-word;margin-bottom:12px}.out .lvl{color:var(--accent2)}.out .num{color:var(--accent)}.out .warn{color:#e07856}.lvl-block{background:#10141f;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-family:Cascadia Code,Courier New,monospace;font-size:.8rem;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.lvl-block .lvl-label{flex:0 0 auto;color:var(--accent2);min-width:58px}.lvl-block .lvl-own{margin-top:6px;font-size:.7rem;color:var(--muted)}.lvl-block .lvl-own .num{display:block;font-size:.8rem;font-weight:700;color:var(--accent)}.lvl-block .txt{flex:1 1 auto;white-space:pre-wrap;word-break:break-word;line-height:1.5}.lvl-block .txt .lvl{color:var(--accent2)}.lvl-block .txt .num{color:var(--accent)}.lvl-block .txt .warn{color:#e07856}.lvl-copy{flex:0 0 auto;font-size:.68rem;padding:4px 8px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:5px;cursor:pointer}button{background:var(--accent);color:#1a1f2e;border:none;padding:9px 16px;border-radius:7px;font-weight:600;cursor:pointer;font-size:.9rem}button.danger{background:transparent;color:#e07856;border:1px solid #e07856}button:active{transform:scale(.97)}.resetrow{text-align:center;margin-top:8px}@keyframes pu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}.panel,.pl-card,.lvl-block{animation:pu .3s ease both}input,button,.place-chip{transition:background-color .2s,border-color .2s,transform .12s}@media(prefers-reduced-motion:no-preference){:host{interpolate-size:allow-keywords}.panel-body{overflow:hidden;height:auto;transition:height .3s ease,opacity .25s ease,visibility .3s}.panel.collapsed .panel-body{display:block;height:0;opacity:0;visibility:hidden}details::details-content{block-size:0;overflow:hidden;opacity:0;transition:block-size .3s ease,opacity .25s ease,content-visibility .3s allow-discrete}details[open]::details-content{block-size:auto;opacity:1}}@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}</style><h1 data-i18n="pl.title">Powerlevel-Rechner</h1>
 <div class="playerbar">
 <label class="small" data-i18n="common.playerName">Spielername</label>
 <input type="text" id="playerNameInput" />
