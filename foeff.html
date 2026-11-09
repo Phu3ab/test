@@ -178,6 +178,121 @@ header h1 button.pk {
   font-weight: 400;
   letter-spacing: 0;
 }
+
+/* Animationen (werden bei „Bewegung reduzieren“ des Systems abgeschaltet) */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  button,
+  select,
+  input,
+  .group-chip {
+    transition:
+      transform 0.12s ease,
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      color 0.2s ease,
+      box-shadow 0.2s ease,
+      opacity 0.2s ease;
+  }
+  button:active {
+    transform: scale(0.96);
+  }
+  input:focus,
+  select:focus {
+    box-shadow: 0 0 0 2px rgba(212, 169, 75, 0.35);
+  }
+  #v > * {
+    animation: fadeUp 0.3s ease both;
+  }
+  #v > *:nth-child(2) {
+    animation-delay: 0.04s;
+  }
+  #v > *:nth-child(3) {
+    animation-delay: 0.08s;
+  }
+  #v > *:nth-child(4) {
+    animation-delay: 0.12s;
+  }
+  #l > *,
+  #o > * {
+    animation: fadeUp 0.28s ease both;
+  }
+  #o > *:nth-child(2) {
+    animation-delay: 0.05s;
+  }
+  #o > *:nth-child(3) {
+    animation-delay: 0.1s;
+  }
+  nav button.on {
+    animation: popIn 0.25s ease both;
+  }
+  .pk-sheet,
+  .pk-box {
+    animation: popIn 0.22s ease both;
+  }
+}
+.lgt-scroll {
+  overflow: auto;
+  max-height: 70vh;
+  border-radius: 12px;
+}
+.lgt {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+  font-size: 0.8rem;
+}
+.lgt th,
+.lgt td {
+  padding: 5px 9px;
+  border-bottom: 1px solid var(--b);
+  text-align: right;
+  white-space: nowrap;
+}
+.lgt th {
+  position: sticky;
+  top: 0;
+  background: var(--c);
+  color: var(--a);
+  z-index: 1;
+}
+.lgt th:first-child,
+.lgt td:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--c);
+  text-align: center;
+}
+.lgt tr:hover td {
+  background: rgba(111, 168, 220, 0.08);
+}
 </style><style>
 /* Gemeinsame Auswahl (js/pick.js). Erwartet die Variablen --in --t --b --m --c --a --a2 der Seite. */
 button.pk {
@@ -444,6 +559,33 @@ button.pk.tm {
   text-align: center;
   padding-left: 10px;
 }
+
+@keyframes pkIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pkFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pkov {
+    animation: pkFade 0.2s ease both;
+  }
+  .pksh {
+    animation: pkIn 0.25s ease both;
+  }
+}
 </style></head><body>
 <header><h1 style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="white-space:nowrap">📈 FoEfficiency</span><span style="display:flex;gap:6px;min-width:0"><select id="era" data-ns title="Zeitalter" data-i18n-title="f.era" style="width:auto;min-width:0;max-width:34vw;font-size:.85rem;text-overflow:ellipsis"></select><select id="lg" data-i18n-title="f.lang" style="width:auto;padding:4px 6px"><option value="de">DE</option><option value="en">EN</option></select></span></h1><nav id="nav"></nav></header><main id="v"></main>
 <script src="foeff-data.js"></script><script>
@@ -452,6 +594,24 @@ button.pk.tm {
 // Beides läuft über den DOM-Übersetzer in js/foeff-i18n.js (Daten, keine Oberflächentexte).
 (window.I18N = window.I18N || {}).foeff = {
   "texts": {
+    "f.tab.lg": {"en": "GB level", "de": "LG-Stufe"},
+    "f.tab.lgt": {"en": "GB table", "de": "LG-Tabelle"},
+    "f.lg.level": {"en": "Level", "de": "Stufe"},
+    "f.lg.levelN": {"en": "Level {n}", "de": "Stufe {n}"},
+    "f.lg.lv": {"en": "Lvl", "de": "Stufe"},
+    "f.lg.cost": {"en": "FP cost of this level", "de": "FP-Kosten dieser Stufe"},
+    "f.lg.cum": {"en": "Total up to this level", "de": "Summe bis zu dieser Stufe"},
+    "f.lg.extra": {"en": "Extra costs", "de": "Zusatzkosten"},
+    "f.lg.thisLevel": {"en": "This level", "de": "Diese Stufe"},
+    "f.lg.effects": {"en": "Effects", "de": "Effekte"},
+    "f.lg.weighted": {"en": "weighted", "de": "gewichtet"},
+    "f.lg.cs": {"en": "copper BP sets", "de": "Kupfer-BP-Sets"},
+    "f.lg.gs": {"en": "gold BP sets", "de": "Gold-BP-Sets"},
+    "f.lg.c": {"en": "coins", "de": "Münzen"},
+    "f.lg.su": {"en": "supplies", "de": "Vorräte"},
+    "f.lg.me": {"en": "medals", "de": "Medaillen"},
+    "f.lg.go": {"en": "goods each", "de": "Güter je Sorte"},
+    "f.lg.noEff": {"en": "No effect table for this building", "de": "Keine Effekt-Tabelle für dieses Gebäude"},
     "f.tab.eff": {"en": "Buildings", "de": "Gebäude"},
     "f.tab.city": {"en": "City", "de": "Stadt"},
     "f.tab.inv": {"en": "Inventory", "de": "Inventar"},
@@ -1128,6 +1288,8 @@ const area = (e) => {
   T = {
     eff: "f.tab.eff",
     kits: "f.tab.kits",
+    lg: "f.tab.lg",
+    lgt: "f.tab.lgt",
     city: "f.tab.city",
     inv: "f.tab.inv",
     al: "f.tab.al",
@@ -1166,6 +1328,8 @@ function drw() {
       al: vAl,
       tr: vTr,
       kits: vKits,
+      lg: vLg,
+      lgt: vLgt,
       w: vW,
       a: vA,
     }[tab](),
@@ -1362,7 +1526,7 @@ const skList = () =>
       items: [
         ...["e", "t", "n", "a", "i", ...(selN() ? ["s"] : []), ...skList().map((r) => "r" + r)].map((r) => [
           r,
-          SKL(r),
+          trn(SKL(r)),
           "",
         ]),
         ...itKeys().map((k) => ["i:" + k, trn(itName(k)), tl("f.s.items")]),
@@ -3209,6 +3373,124 @@ function vKits() {
       kqT = setTimeout(kitList, 120);
     }),
     kitList());
+}
+</script><script>
+// Tabs „LG-Stufe“ (vLg: ein LG auf einer Stufe) und „LG-Tabelle“ (vLgt: alle Stufen eines LGs): FP-Kosten, Zusatzkosten, Effekte
+// Daten: DATA.jLGC (aus tools/gen_jlgc.js), Effekte: DATA.jLGV/jLGI. Ladereihenfolge: siehe <script>-Tags in foeff.html.
+const LGC = DATA.jLGC,
+  LGXF = ["cs", "gs", "c", "su", "me", "go"],
+  lgName = (a) => trn(LGC.NM[a] || a),
+  lgSheet = (a) => Object.keys(CA).find((k) => CA[k] == a),
+  lgMax = (a) => LGC.N[a][0],
+  lgEffTab = (a) => {
+    const k = lgSheet(a);
+    return (k && (DATA.jLGV[k] || DATA.jLGI[k])) || null;
+  };
+// Kosten je Stufe (FP) für ein LG: Index = Stufe
+function lgCosts(a) {
+  const [m, ...st] = LGC.N[a],
+    c = [0];
+  let t = 0;
+  for (let L = 1; L <= m; L++)
+    c.push((t += st[L <= 10 ? 0 : L <= 40 ? 1 : L <= 70 ? 2 : L <= 100 ? 3 : L === 101 ? 4 : 5]));
+  return c;
+}
+function lgExtraAt(a, L) {
+  const m = LGC.M[a] || {},
+    g = (k) => (m[k] && LGC.S[m[k]][L - 1]) || 0,
+    co = g("co");
+  return { cs: g("cs"), gs: g("gs"), c: co || g("c"), su: co || g("su"), me: g("me"), go: g("go") };
+}
+function lgExtraSumTo(a, L) {
+  const t = { cs: 0, gs: 0, c: 0, su: 0, me: 0, go: 0 };
+  for (let l = 1; l <= L; l++) {
+    const x = lgExtraAt(a, l);
+    for (const k of LGXF) t[k] += x[k];
+  }
+  return t;
+}
+const lgOpts = (sel) =>
+  LGC.O.filter((a) => LGC.N[a])
+    .map((a) => `<option value="${a}"${a == sel ? " selected" : ""}>${esc(lgName(a))}</option>`)
+    .join("");
+const lgEffRow = (a, L) => {
+  const V = lgEffTab(a);
+  if (!V) return null;
+  const row = V.v[Math.min(L, V.v.length) - 1];
+  return V.i.map((q, j) => [q, row[j]]).filter((x) => x[1]);
+};
+const lgXLine = (x) =>
+  LGXF.filter((k) => x[k])
+    .map((k) => `${fmt(x[k], 0)} ${tl("f.lg." + k)}`)
+    .join(" · ") || "–";
+let lgSel = ls("lgSel", "AD"),
+  lgLv = ls("lgLv", 100);
+function vLg() {
+  LGC.N[lgSel] || (lgSel = "AD");
+  setHtml(
+    $("#v"),
+    `<select id="lgs">${lgOpts(lgSel)}</select><div class="g"><span>${tl("f.lg.level")}</span><input id="lgl" type="number" min="1" value="${lgLv}"></div><div id="o"></div>`,
+  );
+  const go = () => {
+    lgSel = $("#lgs").value;
+    const m = lgMax(lgSel);
+    lgLv = Math.max(1, Math.min(m, Math.round(+$("#lgl").value || 1)));
+    sv("lgSel", lgSel);
+    sv("lgLv", lgLv);
+    const c = lgCosts(lgSel),
+      sum = c.slice(1, lgLv + 1).reduce((s, x) => s + x, 0),
+      x1 = lgExtraAt(lgSel, lgLv),
+      xs = lgExtraSumTo(lgSel, lgLv),
+      ef = lgEffRow(lgSel, lgLv);
+    let tw = 0;
+    const er = (ef || [])
+      .map(([q, v]) => {
+        const w = W[q] || 0;
+        tw += v * w;
+        return `<div class="row"><span>${esc(trn(D.labels[q]))}</span><span>${fmt(v, 4)} <span class="m">× ${fmt(w, 4)} = ${fmt(v * w)}</span></span></div>`;
+      })
+      .join("");
+    setHtml(
+      $("#o"),
+      `<div class="card"><b>${esc(lgName(lgSel))} · ${tl("f.lg.levelN", { n: lgLv })}</b><div class="row"><span>${tl("f.lg.cost")}</span><span>${fmt(c[lgLv], 0)} FP</span></div><div class="row"><span>${tl("f.lg.cum")}</span><span>${fmt(sum, 0)} FP</span></div></div>` +
+        `<div class="card"><b>${tl("f.lg.extra")}</b><div class="row"><span>${tl("f.lg.thisLevel")}</span><span>${lgXLine(x1)}</span></div><div class="row"><span>${tl("f.lg.cum")}</span><span>${lgXLine(xs)}</span></div></div>` +
+        `<div class="card"><b>${tl("f.lg.effects")}${ef && ef.length ? ` <span class="m">· ${tl("f.lg.weighted")}: ${fmt(tw)}</span>` : ""}</b>${er || `<div class="m">${tl("f.lg.noEff")}</div>`}</div>`,
+    );
+  };
+  $("#lgs").onchange = go;
+  $("#lgl").oninput = go;
+  go();
+}
+function vLgt() {
+  LGC.N[lgSel] || (lgSel = "AD");
+  setHtml($("#v"), `<select id="lgs">${lgOpts(lgSel)}</select><div id="o"></div>`);
+  const go = () => {
+    lgSel = $("#lgs").value;
+    sv("lgSel", lgSel);
+    const m = lgMax(lgSel),
+      c = lgCosts(lgSel),
+      V = lgEffTab(lgSel),
+      idx = V ? V.i : [];
+    let cum = 0;
+    const cumX = { cs: 0, gs: 0, c: 0, su: 0, me: 0, go: 0 },
+      head = `<tr><th>${tl("f.lg.lv")}</th><th>FP</th><th>Σ FP</th><th>${tl("f.lg.extra")}</th>${idx.map((q) => `<th>${esc(trn(D.labels[q]))}</th>`).join("")}</tr>`,
+      body = [];
+    for (let L = 1; L <= m; L++) {
+      cum += c[L];
+      const x = lgExtraAt(lgSel, L),
+        r = V ? V.v[Math.min(L, V.v.length) - 1] : [];
+      for (const k of LGXF) cumX[k] += x[k];
+      body.push(
+        `<tr><td>${L}</td><td>${fmt(c[L], 0)}</td><td>${fmt(cum, 0)}</td><td>${lgXLine(x)}</td>${idx.map((q, j) => `<td>${r[j] ? fmt(r[j], 4) : ""}</td>`).join("")}</tr>`,
+      );
+    }
+    setHtml(
+      $("#o"),
+      `<div class="card" style="padding:0"><div class="lgt-scroll"><table class="lgt">${head}${body.join("")}</table></div></div>`,
+    );
+  };
+  $("#lgs").onchange = go;
+  go();
 }
 </script><script>
 // Tab „GG-Prüfung“ (vTr, cTr) und Start-Aufruf draw()

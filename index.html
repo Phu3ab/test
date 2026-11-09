@@ -642,6 +642,69 @@ body.fe #lgSel + button.lgpk {
 .xcost .xn {
   color: var(--accent);
 }
+
+/* Animationen (werden bei „Bewegung reduzieren“ des Systems abgeschaltet) */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  button,
+  select,
+  input,
+  .group-chip {
+    transition:
+      transform 0.12s ease,
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      color 0.2s ease,
+      box-shadow 0.2s ease,
+      opacity 0.2s ease;
+  }
+  button:active {
+    transform: scale(0.96);
+  }
+  input:focus,
+  select:focus {
+    box-shadow: 0 0 0 2px rgba(212, 169, 75, 0.35);
+  }
+  .panel,
+  .group-output-panel,
+  .out-panel {
+    animation: fadeUp 0.3s ease both;
+  }
+  .group-chip.active {
+    animation: popIn 0.2s ease both;
+  }
+  .panel-body,
+  .go-body {
+    animation: fadeIn 0.25s ease both;
+  }
+}
 </style><style>
 /* Gemeinsame Auswahl (js/pick.js). Erwartet die Variablen --in --t --b --m --c --a --a2 der Seite. */
 button.pk {
@@ -908,6 +971,33 @@ button.pk.tm {
   text-align: center;
   padding-left: 10px;
 }
+
+@keyframes pkIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pkFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pkov {
+    animation: pkFade 0.2s ease both;
+  }
+  .pksh {
+    animation: pkIn 0.25s ease both;
+  }
+}
 </style>
 </head>
 <body>
@@ -918,6 +1008,10 @@ button.pk.tm {
 <div class="panel" style="padding:12px 16px;">
 <label class="small" style="margin-bottom:6px;" data-i18n="common.playerName">Spielername</label>
 <input type="text" id="playerNameInput" style="width:220px; background:#10141f; border:1px solid var(--border); color:var(--text); border-radius:5px; padding:6px 8px; font-size:0.9rem;" />
+</div>
+<div class="panel" style="padding:12px 16px;">
+<label class="small" style="margin-bottom:6px;" data-i18n="lg.stdF">Standard-Faktor</label>
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;"><div><label class="small" style="margin-bottom:4px;" data-i18n="lg.stdFk">Kupfer</label><input type="number" id="stdFk" min="1" step="0.01" style="width:100%; background:#10141f; border:1px solid var(--border); color:var(--text); border-radius:5px; padding:6px 8px; font-size:0.9rem; box-sizing:border-box;"></div><div><label class="small" style="margin-bottom:4px;" data-i18n="lg.stdFg">Gold</label><input type="number" id="stdFg" min="1" step="0.01" style="width:100%; background:#10141f; border:1px solid var(--border); color:var(--text); border-radius:5px; padding:6px 8px; font-size:0.9rem; box-sizing:border-box;"></div></div>
 </div>
 <div class="panel" id="panelBuildings">
 <h2 class="section collapsible-header" data-panel="buildings">
@@ -1731,9 +1825,16 @@ function setFk(a, patch) {
   else delete faktoren[a];
 }
 // Standard-Faktor: Kupfer 1,84 (Kupfer-Gebäude, Gold-Gebäude bis Stufe 100), Gold 1,2 (Gold-Gebäude ab Stufe 101)
+const STDF_KEY = "lg-stdfaktor";
+let stdF = { k: 1.84, g: 1.2 };
+try {
+  const t = JSON.parse(localStorage.getItem(STDF_KEY) || "null");
+  t && t.k > 0 && (stdF.k = t.k);
+  t && t.g > 0 && (stdF.g = t.g);
+} catch {}
 function defaultFaktor(a, L) {
   const e = DATA[a];
-  return e.faktorGold && L > 100 ? e.faktorGold : e.faktor;
+  return e.faktorGold && L > 100 ? stdF.g : stdF.k;
 }
 function effectiveFaktor(a, L = levels[a]) {
   const e = DATA[a];
@@ -1784,6 +1885,9 @@ function getRow(a, e) {
     "lg.title": {"en": "GB Calculator", "de": "LG-Rechner"},
     "lg.sub": {"en": "Current contribution values per building – calculated automatically from the FoE table", "de": "Aktuelle Beitragswerte pro Bauwerk – automatisch aus der FoE-Tabelle berechnet"},
     "common.playerName": {"en": "Player name", "de": "Spielername"},
+    "lg.stdF": {"en": "Default factor", "de": "Standard-Faktor"},
+    "lg.stdFk": {"en": "Copper", "de": "Kupfer"},
+    "lg.stdFg": {"en": "Gold", "de": "Gold"},
     "lg.buildings": {"en": "Buildings & levels", "de": "Bauwerke & Stufen"},
     "lg.recalc": {"en": "Recalculate", "de": "Neu berechnen"},
     "lg.sniper": {"en": "🎯 Sniper offset", "de": "🎯 Sniper-Ausgleich"},
@@ -2882,6 +2986,21 @@ async function bootstrap() {
     t ? await saveAll() : await loadCurrentProfileData(),
     renderAll());
 }
+["stdFk", "stdFg"].forEach((id) => {
+  const el = document.getElementById(id),
+    key = id == "stdFk" ? "k" : "g";
+  el.value = stdF[key];
+  el.addEventListener("change", () => {
+    const v = parseFloat(el.value);
+    stdF[key] = v > 0 ? v : key == "k" ? 1.84 : 1.2;
+    el.value = stdF[key];
+    try {
+      localStorage.setItem(STDF_KEY, JSON.stringify(stdF));
+    } catch {}
+    renderAll();
+    typeof plDone != "undefined" && plDone && window.plRender && window.plRender();
+  });
+});
 (document.getElementById("btnRecalc").addEventListener("click", () => {
   renderOutput();
 }),
@@ -2900,7 +3019,7 @@ async function generateBackupCode() {
   return JSON.stringify({ v: 3, activeProfileId, profiles: a, store: collectToolStore() });
 }
 // Einstellungen und Daten der anderen Tools (FoEfficiency, Stadtplaner, Powerlevel, Sprache) liegen im selben localStorage
-const TOOL_STORE_PREFIX = ["foeff:", "foe-cp:", "lg-powerlevel-state"];
+const TOOL_STORE_PREFIX = ["lg-stdfaktor", "foeff:", "foe-cp:", "lg-powerlevel-state"];
 const isToolKey = (k) => TOOL_STORE_PREFIX.some((p) => k.startsWith(p));
 function collectToolStore() {
   const o = {};
@@ -3061,7 +3180,7 @@ function setView(n) {
 }
 function plInit() {
   const n = document.getElementById("plHost").attachShadow({ mode: "open" });
-  n.innerHTML = `<style>*{box-sizing:border-box}h1{font-size:1.3rem;margin:0 0 12px;color:var(--accent);letter-spacing:.5px}h2.section{font-size:1rem;color:var(--accent2);margin:0 0 10px}.collapsible-header{cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px}.collapse-arrow{display:inline-block;font-size:.75rem;transition:transform .15s ease}.panel.collapsed .collapse-arrow{transform:rotate(-90deg)}.panel.collapsed .panel-body{display:none}.panel.collapsed h2.section{margin-bottom:0}.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}.xout{background:#10141f;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:.78rem;line-height:1.55;margin-bottom:12px}.xscroll{max-height:220px;overflow:auto}.xout .xn{color:var(--accent)}.xout .xl{color:var(--muted);display:inline-block;min-width:4.2em}label.small{font-size:.78rem;color:var(--muted);display:block;margin-bottom:0}input[type=text],input[type=number]{background:#10141f;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 8px;font-size:.85rem}.playerbar{display:flex;align-items:center;gap:10px;margin-bottom:14px}.playerbar input{width:200px}.pl-buildings{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px}.pl-card{background:#1c2233;border:1px solid var(--border);border-radius:8px;padding:8px 10px}.pl-card .name{font-size:.72rem;color:var(--muted);margin-bottom:5px}.pl-card .lvl-row{display:flex;align-items:center;gap:5px;margin-bottom:5px}.pl-card .lvl-row input{width:100%;text-align:center;padding:4px}.pl-card .chips{display:flex;gap:3px;margin-bottom:5px}.place-chip{flex:1;text-align:center;padding:3px 0;font-size:.68rem;font-weight:600;background:#10141f;border:1px solid var(--border);color:var(--muted);border-radius:4px;cursor:pointer;user-select:none}.place-chip.active{background:var(--accent2);color:#10141f;border-color:var(--accent2)}.pl-card .faktor-row input[type=number]{width:100%;text-align:center;padding:3px;font-size:.78rem}.pp-toggle{display:flex;align-items:center;gap:5px;margin-top:5px;font-size:.7rem;color:var(--muted);cursor:pointer}.pp-toggle input{width:auto}.pp-row{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-top:5px}.pp-cell span{display:block;text-align:center;font-size:.62rem;color:var(--muted)}.pp-cell input{width:100%;text-align:center;padding:3px 1px;font-size:.72rem}.total-display{text-align:center;padding:6px 0 12px}.total-display .num{font-size:2.1rem;font-weight:700;color:var(--accent);display:block}.total-display .label{color:var(--muted);font-size:.8rem}.out{background:#10141f;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:Cascadia Code,Courier New,monospace;font-size:.8rem;line-height:1.6;white-space:pre-wrap;word-break:break-word;margin-bottom:12px}.out .lvl{color:var(--accent2)}.out .num{color:var(--accent)}.out .warn{color:#e07856}.lvl-block{background:#10141f;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-family:Cascadia Code,Courier New,monospace;font-size:.8rem;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.lvl-block .lvl-label{flex:0 0 auto;color:var(--accent2);min-width:58px}.lvl-block .lvl-own{margin-top:6px;font-size:.7rem;color:var(--muted)}.lvl-block .lvl-own .num{display:block;font-size:.8rem;font-weight:700;color:var(--accent)}.lvl-block .txt{flex:1 1 auto;white-space:pre-wrap;word-break:break-word;line-height:1.5}.lvl-block .txt .lvl{color:var(--accent2)}.lvl-block .txt .num{color:var(--accent)}.lvl-block .txt .warn{color:#e07856}.lvl-copy{flex:0 0 auto;font-size:.68rem;padding:4px 8px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:5px;cursor:pointer}button{background:var(--accent);color:#1a1f2e;border:none;padding:9px 16px;border-radius:7px;font-weight:600;cursor:pointer;font-size:.9rem}button.danger{background:transparent;color:#e07856;border:1px solid #e07856}button:active{transform:scale(.97)}.resetrow{text-align:center;margin-top:8px}</style><h1 data-i18n="pl.title">Powerlevel-Rechner</h1>
+  n.innerHTML = `<style>*{box-sizing:border-box}h1{font-size:1.3rem;margin:0 0 12px;color:var(--accent);letter-spacing:.5px}h2.section{font-size:1rem;color:var(--accent2);margin:0 0 10px}.collapsible-header{cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px}.collapse-arrow{display:inline-block;font-size:.75rem;transition:transform .15s ease}.panel.collapsed .collapse-arrow{transform:rotate(-90deg)}.panel.collapsed .panel-body{display:none}.panel.collapsed h2.section{margin-bottom:0}.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}.xout{background:#10141f;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:.78rem;line-height:1.55;margin-bottom:12px}.xscroll{max-height:220px;overflow:auto}.xout .xn{color:var(--accent)}.xout .xl{color:var(--muted);display:inline-block;min-width:4.2em}label.small{font-size:.78rem;color:var(--muted);display:block;margin-bottom:0}input[type=text],input[type=number]{background:#10141f;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 8px;font-size:.85rem}.playerbar{display:flex;align-items:center;gap:10px;margin-bottom:14px}.playerbar input{width:200px}.pl-buildings{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px}.pl-card{background:#1c2233;border:1px solid var(--border);border-radius:8px;padding:8px 10px}.pl-card .name{font-size:.72rem;color:var(--muted);margin-bottom:5px}.pl-card .lvl-row{display:flex;align-items:center;gap:5px;margin-bottom:5px}.pl-card .lvl-row input{width:100%;text-align:center;padding:4px}.pl-card .chips{display:flex;gap:3px;margin-bottom:5px}.place-chip{flex:1;text-align:center;padding:3px 0;font-size:.68rem;font-weight:600;background:#10141f;border:1px solid var(--border);color:var(--muted);border-radius:4px;cursor:pointer;user-select:none}.place-chip.active{background:var(--accent2);color:#10141f;border-color:var(--accent2)}.pl-card .faktor-row input[type=number]{width:100%;text-align:center;padding:3px;font-size:.78rem}.pp-toggle{display:flex;align-items:center;gap:5px;margin-top:5px;font-size:.7rem;color:var(--muted);cursor:pointer}.pp-toggle input{width:auto}.pp-row{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-top:5px}.pp-cell span{display:block;text-align:center;font-size:.62rem;color:var(--muted)}.pp-cell input{width:100%;text-align:center;padding:3px 1px;font-size:.72rem}.total-display{text-align:center;padding:6px 0 12px}.total-display .num{font-size:2.1rem;font-weight:700;color:var(--accent);display:block}.total-display .label{color:var(--muted);font-size:.8rem}.out{background:#10141f;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:Cascadia Code,Courier New,monospace;font-size:.8rem;line-height:1.6;white-space:pre-wrap;word-break:break-word;margin-bottom:12px}.out .lvl{color:var(--accent2)}.out .num{color:var(--accent)}.out .warn{color:#e07856}.lvl-block{background:#10141f;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-family:Cascadia Code,Courier New,monospace;font-size:.8rem;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.lvl-block .lvl-label{flex:0 0 auto;color:var(--accent2);min-width:58px}.lvl-block .lvl-own{margin-top:6px;font-size:.7rem;color:var(--muted)}.lvl-block .lvl-own .num{display:block;font-size:.8rem;font-weight:700;color:var(--accent)}.lvl-block .txt{flex:1 1 auto;white-space:pre-wrap;word-break:break-word;line-height:1.5}.lvl-block .txt .lvl{color:var(--accent2)}.lvl-block .txt .num{color:var(--accent)}.lvl-block .txt .warn{color:#e07856}.lvl-copy{flex:0 0 auto;font-size:.68rem;padding:4px 8px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:5px;cursor:pointer}button{background:var(--accent);color:#1a1f2e;border:none;padding:9px 16px;border-radius:7px;font-weight:600;cursor:pointer;font-size:.9rem}button.danger{background:transparent;color:#e07856;border:1px solid #e07856}button:active{transform:scale(.97)}.resetrow{text-align:center;margin-top:8px}@keyframes pu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}.panel,.pl-card,.lvl-block{animation:pu .3s ease both}input,button,.place-chip{transition:background-color .2s,border-color .2s,transform .12s}@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}</style><h1 data-i18n="pl.title">Powerlevel-Rechner</h1>
 <div class="playerbar">
 <label class="small" data-i18n="common.playerName">Spielername</label>
 <input type="text" id="playerNameInput" />
@@ -3243,8 +3362,8 @@ function plInit() {
 <input type="number" min="0" placeholder="${tl("pl.to")}" value="${t.to}" data-abbr="${e}" data-field="to" />
 </div>
 <div class="chips">${l}</div>
-<div class="faktor-row"><input type="number" min="1" step="0.01" value="${o == null ? "" : o}" placeholder="${DATA[e].faktorGold ? DATA[e].faktor + " / " + DATA[e].faktorGold : DATA[e].faktor}" data-abbr="${e}" data-field="faktor" /><label class="pp-toggle"><input type="checkbox" data-abbr="${e}" data-field="perPlace"${t.perPlace ? " checked" : ""} /> ${tl("pl.perPlace")}</label></div>
-${t.perPlace ? `<div class="pp-row">${[0, 1, 2, 3, 4].map((d) => `<div class="pp-cell"><span>P${d + 1}</span><input type="number" min="0" step="0.01" placeholder="${o == null ? DATA[e].faktor : o}" value="${typeof t.faktoren[d] == "number" ? t.faktoren[d] : ""}" data-abbr="${e}" data-field="pfaktor" data-n="${d}" /></div>`).join("")}</div>` : ""}
+<div class="faktor-row"><input type="number" min="1" step="0.01" value="${o == null ? "" : o}" placeholder="${DATA[e].faktorGold ? stdF.k + " / " + stdF.g : stdF.k}" data-abbr="${e}" data-field="faktor" /><label class="pp-toggle"><input type="checkbox" data-abbr="${e}" data-field="perPlace"${t.perPlace ? " checked" : ""} /> ${tl("pl.perPlace")}</label></div>
+${t.perPlace ? `<div class="pp-row">${[0, 1, 2, 3, 4].map((d) => `<div class="pp-cell"><span>P${d + 1}</span><input type="number" min="0" step="0.01" placeholder="${o == null ? stdF.k : o}" value="${typeof t.faktoren[d] == "number" ? t.faktoren[d] : ""}" data-abbr="${e}" data-field="pfaktor" data-n="${d}" /></div>`).join("")}</div>` : ""}
 `),
           a.appendChild(r));
       }),

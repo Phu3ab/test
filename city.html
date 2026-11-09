@@ -162,6 +162,57 @@ td + td {
 #ttl #era + button.pk {
   margin-left: auto;
 }
+
+/* Animationen (werden bei „Bewegung reduzieren“ des Systems abgeschaltet) */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  button,
+  select,
+  input,
+  .group-chip {
+    transition:
+      transform 0.12s ease,
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      color 0.2s ease,
+      box-shadow 0.2s ease,
+      opacity 0.2s ease;
+  }
+  button:active {
+    transform: scale(0.96);
+  }
+  input:focus,
+  select:focus {
+    box-shadow: 0 0 0 2px rgba(212, 169, 75, 0.35);
+  }
+}
 </style><style>
 /* Gemeinsame Auswahl (js/pick.js). Erwartet die Variablen --in --t --b --m --c --a --a2 der Seite. */
 button.pk {
@@ -428,6 +479,33 @@ button.pk.tm {
   text-align: center;
   padding-left: 10px;
 }
+
+@keyframes pkIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pkFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pkov {
+    animation: pkFade 0.2s ease both;
+  }
+  .pksh {
+    animation: pkIn 0.25s ease both;
+  }
+}
 </style></head><body>
 <div id="ttl"><button class="tgb" id="tgtop" data-i18n-title="ui.tools" title="Tools"></button><span data-i18n="ui.title">Planner</span><select id="era" data-ns title="Era" data-i18n-title="ui.eraTitle"></select><select id="lgs" title="Language" data-i18n-title="ui.lang"><option value="de">DE</option><option value="en">EN</option></select></div>
 <div id="top">
@@ -552,6 +630,7 @@ button.pk.tm {
     "val.nOfM": {"en": "{n} of {m}", "de": "{n} von {m}"},
     "val.missing": {"en": "; {n} buildings without Efficiency data are missing", "de": "; {n} Gebäude ohne Efficiency-Daten fehlen"},
     "val.loading": {"en": "; loading Efficiency data …", "de": "; Efficiency-Daten werden geladen …"},
+    "val.fromLgr": {"en": "level from LG calculator (empty = take over)", "de": "Stufe aus LG-Rechner (leer = übernehmen)"},
     "val.tableUpTo": {"en": "(table up to level {n})", "de": "(Tabelle bis Stufe {n})"},
     "val.noTable": {"en": "(no table data)", "de": "(keine Tabellendaten)"},
     "map.streetLevel": {"en": "Street level {n}", "de": "Straße Stufe {n}"},
@@ -1388,7 +1467,7 @@ function blist() {
   const M = new Map();
   items.forEach((it, k) => {
     const st = it.d.t == "street",
-      key = st ? "~st" : it.d.i + "|" + (it.er == null ? "" : it.er) + "|" + (it.lv || 0);
+      key = st ? "~st" : it.d.i + "|" + (it.er == null ? "" : it.er) + "|" + (lgEff(it) || 0);
     let o = M.get(key);
     if (!o) {
       o = { it: it, st, n: 0, off: 0, l: [] };
@@ -1404,7 +1483,7 @@ function blist() {
       nmx = o.st ? tl("bl.streets") : nmi(o.it),
       sz = o.st
         ? ""
-        : ` <span style="color:var(--muted)">${d.w}×${d.l}${d.t == "greatbuilding" && o.it.lv ? " · Lv " + o.it.lv : ""}${o.it.er != null ? " · " + eName(o.it.er) : ""}</span>`;
+        : ` <span style="color:var(--muted)">${d.w}×${d.l}${d.t == "greatbuilding" && lgEff(o.it) != null ? " · Lv " + lgEff(o.it) : ""}${o.it.er != null ? " · " + eName(o.it.er) : ""}</span>`;
     return `<tr data-g="${i}" style="cursor:pointer"><td>${nmx}${sz}${o.off ? ` <span class="g">· ${tl("bl.nInactive", { n: o.off })}</span>` : ""}</td><td>${o.n}×</td></tr>`;
   }).join("");
   $("bl").innerHTML = items.length ? `<table>${q}</table>` : tl("bl.none");
@@ -1437,6 +1516,84 @@ const LGAL = {
   "saturn vi tor pegasus": "Pegasus",
   "saturn vi tor hydra": "Hydra",
 };
+// Sheet-Schlüssel -> Kürzel im LG-Rechner (Stufen: localStorage lg-levels)
+const LGCA = {
+  BG: "BG",
+  CoCa: "Katalysator",
+  SW: "Kriegsschiff",
+  CF: "CF",
+  SV: "Tresor",
+  AO: "AO",
+  Arc: "Arche",
+  AIC: "K.I.",
+  Alcatraz: "Alca",
+  AM: "Atlantis",
+  Atom: "Atomium",
+  Capitol: "Kapitol",
+  CoA: "AD",
+  Colosseum: "Kolosseum",
+  DC: "Deal",
+  FI: "Insel",
+  FoD: "Dresdner",
+  GS: "Gaea",
+  GT: "Galata",
+  HS: "Hagia",
+  HC: "Burg",
+  IT: "Inno",
+  LoA: "Leuchtturm",
+  LT: "Lotus",
+  ND: "Notre",
+  OoD: "Orakel",
+  RFP: "Regenwald",
+  RAH: "RAH",
+  SBC: "Basilius",
+  SC: "WF",
+  SN: "Needle",
+  SMB: "MD",
+  ToR: "Tempel",
+  Habitat: "Habitat",
+  Kraken: "Kraken",
+  VP: "Virgo",
+  ToB: "Babel",
+  TT: "Friedensturm",
+  V1: "Voyager",
+  CC: "Cape",
+  CdM: "CDM",
+  SG: "Gazer",
+  SHS: "Siphon",
+  TA: "TA",
+  Pegasus: "Pegasus",
+  Centaurus: "Centaurus",
+  Hydra: "Hydra",
+  Obs: "Obsi",
+  Zeus: "Zeus",
+};
+let LGRraw = null,
+  LGRobj = {};
+function lgrLv(d) {
+  const t = lgKeyOf(d),
+    k = t && LGCA[t];
+  if (!k) return null;
+  try {
+    const p = localStorage.getItem("lg-active-profile") || "p1",
+      r = localStorage.getItem("lg-levels:" + p) || localStorage.getItem("lg-levels") || "{}";
+    if (r !== LGRraw) {
+      LGRraw = r;
+      LGRobj = JSON.parse(r) || {};
+    }
+  } catch {
+    return null;
+  }
+  const v = LGRobj[k];
+  return v == null || isNaN(+v) ? null : Math.max(0, Math.round(+v));
+}
+// wirksame Stufe: eigene Eingabe (it.lv) vor LG-Rechner; 0 = nicht gebaut / nicht im LG-Rechner eingetragen (keine Werte)
+const lgEff = (it) => (it.lv ? it.lv : it.d.t == "greatbuilding" ? lgrLv(it.d) || 0 : null);
+function lgKeyOf(d) {
+  if (!EF) return null;
+  const n = d.n.normalize("NFC").trim().toLowerCase();
+  return EF.LGA[n] || LGAL[n] || null;
+}
 function lgTab(d) {
   if (!EF) return null;
   const n = d.n.normalize("NFC").trim().toLowerCase(),
@@ -1447,7 +1604,9 @@ function lgRow(it) {
   const V = lgTab(it.d);
   if (!V) return null;
   const n = V.v.length,
-    L = Math.min(it.lv || n, n),
+    e = lgEff(it);
+  if (e === 0) return {};
+  const L = Math.min(e || n, n),
     row = V.v[L - 1],
     c = {};
   V.i.forEach((q, j) => {
@@ -2237,13 +2396,16 @@ function lvShow() {
   b.hidden = !on;
   if (on) {
     const V = lgTab(pick.d);
-    $("lv").value = pick.lv || (V ? V.v.length : "");
-    $("lvn").textContent = V ? tl("val.tableUpTo", { n: V.v.length }) : tl("val.noTable");
+    const e = lgEff(pick);
+    $("lv").value = pick.lv || (e != null ? e : V ? V.v.length : "");
+    $("lvn").textContent =
+      (V ? tl("val.tableUpTo", { n: V.v.length }) : tl("val.noTable")) +
+      (!pick.lv && e != null ? " · " + tl("val.fromLgr") : "");
   }
 }
 $("lv").onchange = (e) => {
   if (pick) {
-    pick.lv = Math.max(1, +e.target.value || 1);
+    pick.lv = Math.max(0, Math.round(+e.target.value || 0));
     calc();
     draw();
     save();
