@@ -3440,10 +3440,10 @@ function vLg() {
   LGC.N[lgSel] || (lgSel = "AD");
   setHtml(
     $("#v"),
-    `<select id="lgs">${lgOpts(lgSel)}</select><div class="g"><span>${tl("f.lg.level")}</span><input id="lgl" type="number" min="1" value="${lgLv}"></div><div id="o"></div>`,
+    `<select id="lgx">${lgOpts(lgSel)}</select><div class="g"><span>${tl("f.lg.level")}</span><input id="lgl" type="number" min="1" value="${lgLv}"></div><div id="o"></div>`,
   );
   const go = () => {
-    lgSel = $("#lgs").value;
+    lgSel = $("#lgx").value;
     const m = lgMax(lgSel);
     lgLv = Math.max(1, Math.min(m, Math.round(+$("#lgl").value || 1)));
     sv("lgSel", lgSel);
@@ -3466,15 +3466,15 @@ function vLg() {
         `<div class="card"><b>${tl("f.lg.effects")}${ef && ef.length ? ` <span class="m">· ${tl("f.lg.weighted")}: ${fmt(tw)}</span>` : ""}</b>${er || `<div class="m">${tl("f.lg.noEff")}</div>`}</div>`,
     );
   };
-  $("#lgs").onchange = go;
+  $("#lgx").onchange = go;
   $("#lgl").oninput = go;
   go();
 }
 function vLgt() {
   LGC.N[lgSel] || (lgSel = "AD");
-  setHtml($("#v"), `<select id="lgs">${lgOpts(lgSel)}</select><div id="o"></div>`);
+  setHtml($("#v"), `<select id="lgx">${lgOpts(lgSel)}</select><div id="o"></div>`);
   const go = () => {
-    lgSel = $("#lgs").value;
+    lgSel = $("#lgx").value;
     sv("lgSel", lgSel);
     const m = lgMax(lgSel),
       c = lgCosts(lgSel),
@@ -3494,7 +3494,7 @@ function vLgt() {
       `<div class="card" style="padding:0"><div class="lgt-scroll"><table class="lgt">${head}${body.join("")}</table></div></div>`,
     );
   };
-  $("#lgs").onchange = go;
+  $("#lgx").onchange = go;
   go();
 }
 </script><script>
