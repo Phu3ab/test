@@ -571,10 +571,6 @@ body.pl #plHost {
   #tabs button.on span:first-child {
     animation: tabBounce 0.4s ease;
   }
-  #feWrap:not([hidden]),
-  #plHost {
-    animation: fadeIn 0.25s ease both;
-  }
 }
 #feWrap {
   position: fixed;
@@ -3638,15 +3634,63 @@ function tab(n) {
     localStorage.setItem("foe-tools:tab", n);
   } catch {}
 }
+// Ansichtswechsel mit Aus-/Einblenden (Web Animations API: startet bei jedem Klick neu, auch bei schnellem Wechsel)
+let tabCur = "lg",
+  tabSeq = 0;
+const tabViews = (n) =>
+  n == "pl"
+    ? [document.getElementById("plHost")]
+    : n == "lg"
+      ? [...document.body.children].filter(
+          (e) =>
+            !["tabs", "feWrap", "plHost", "lgSel"].includes(e.id) &&
+            !/^(SCRIPT|STYLE|LINK)$/.test(e.tagName) &&
+            !e.classList.contains("lgpk") &&
+            !e.hidden,
+        )
+      : [document.getElementById("feWrap")];
+function tabGo(n) {
+  const my = ++tabSeq,
+    old = tabViews(tabCur),
+    fx = (els, kf, o) => els.map((e) => e.animate && e.animate(kf, o));
+  if (!document.body.animate || matchMedia("(prefers-reduced-motion: reduce)").matches || n == tabCur)
+    return (tab(n), (tabCur = n));
+  old.forEach((e) => e.getAnimations().forEach((a) => a.cancel()));
+  document.querySelectorAll("#tabs button").forEach((i) => i.classList.toggle("on", i.dataset.t == n));
+  const out = fx(
+      old,
+      [
+        { opacity: 1, transform: "none" },
+        { opacity: 0, transform: "translateY(-8px)" },
+      ],
+      { duration: 120, easing: "ease-in", fill: "forwards" },
+    ),
+    run = () => {
+      if (my != tabSeq) return;
+      old.forEach((e) => e.getAnimations().forEach((a) => a.cancel()));
+      tab(n);
+      tabCur = n;
+      fx(
+        tabViews(n),
+        [
+          { opacity: 0, transform: "translateY(12px)" },
+          { opacity: 1, transform: "none" },
+        ],
+        { duration: 260, easing: "ease-out" },
+      );
+    };
+  out[0] ? (out[0].onfinish = run) : run();
+}
 document.getElementById("tabs").onclick = (n) => {
   const i = n.target.closest("button");
-  i && tab(i.dataset.t);
+  i && tabGo(i.dataset.t);
 };
 let t0;
 try {
   t0 = localStorage.getItem("foe-tools:tab");
 } catch {}
 (tab(t0),
+  (tabCur = TB.includes(t0) ? t0 : "lg"),
   "serviceWorker" in navigator &&
     addEventListener("load", () => {
       (navigator.serviceWorker

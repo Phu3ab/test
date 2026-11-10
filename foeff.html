@@ -228,18 +228,6 @@ header h1 button.pk {
   select:focus {
     box-shadow: 0 0 0 2px rgba(212, 169, 75, 0.35);
   }
-  #v > * {
-    animation: fadeUp 0.3s ease both;
-  }
-  #v > *:nth-child(2) {
-    animation-delay: 0.04s;
-  }
-  #v > *:nth-child(3) {
-    animation-delay: 0.08s;
-  }
-  #v > *:nth-child(4) {
-    animation-delay: 0.12s;
-  }
   #l > *,
   #o > * {
     animation: fadeUp 0.28s ease both;
@@ -1307,8 +1295,43 @@ const area = (e) => {
   };
 (navUI(),
   ($("#nav").onclick = (e) => {
-    e.target.dataset.k && ((tab = e.target.dataset.k), sv("tab", tab), draw());
+    e.target.dataset.k && swTab(e.target.dataset.k);
   }));
+// Tabwechsel: alter Inhalt blendet aus, neuer ein (Web Animations API, damit es bei jedem Klick neu startet)
+let swSeq = 0;
+function swTab(k) {
+  const v = $("#v"),
+    my = ++swSeq;
+  ((tab = k), sv("tab", tab));
+  document.querySelectorAll("nav button").forEach((e) => e.classList.toggle("on", e.dataset.k == tab));
+  if (!v.animate || matchMedia("(prefers-reduced-motion: reduce)").matches) return draw();
+  v.getAnimations().forEach((a) => a.cancel());
+  v.animate(
+    [
+      { opacity: 1, transform: "none" },
+      { opacity: 0, transform: "translateY(-8px)" },
+    ],
+    {
+      duration: 120,
+      easing: "ease-in",
+      fill: "forwards",
+    },
+  ).onfinish = () => {
+    if (my != swSeq) return;
+    v.getAnimations().forEach((a) => a.cancel());
+    draw();
+    v.animate(
+      [
+        { opacity: 0, transform: "translateY(12px)" },
+        { opacity: 1, transform: "none" },
+      ],
+      {
+        duration: 260,
+        easing: "ease-out",
+      },
+    );
+  };
+}
 function draw() {
   try {
     drw();
