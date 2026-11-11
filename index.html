@@ -498,11 +498,22 @@ h2.section {
   display: flex;
   flex-wrap: wrap;
 }
-.st-zero summary {
+button.chip.st-go {
+  font: inherit;
+  font-size: 0.72rem;
   cursor: pointer;
-  color: var(--muted);
-  font-size: 0.8rem;
-  margin: 2px 0 6px;
+}
+.bcard.flash {
+  animation: bflash 1.2s ease;
+}
+@keyframes bflash {
+  0%,
+  60% {
+    box-shadow: 0 0 0 3px var(--accent), 0 0 14px var(--glow);
+  }
+  100% {
+    box-shadow: none;
+  }
 }
 .chip {
   display: inline-flex;
@@ -2218,6 +2229,27 @@ function initCollapsibles() {
       const t = e.dataset.panel;
       ((collapsed[t] = !collapsed[t]), applyCollapseState(), saveAll());
     }),
+    document.body.addEventListener("click", (a) => {
+      const c = a.target.closest(".st-go");
+      if (!c) return;
+      collapsed.buildings = false;
+      applyCollapseState();
+      saveAll();
+      // Karte nach dem Aufklappen zentrieren; Layout kann sich noch setzen (Schriften, Bilder), daher zweimal
+      const go = (first) => {
+        const k = [...document.querySelectorAll("#buildings .lvl-input")].find((x) => x.dataset.abbr === c.dataset.abbr),
+          card = k && k.closest(".bcard");
+        if (!card) return;
+        card.scrollIntoView({ block: "center" });
+        if (first) {
+          card.classList.remove("flash");
+          void card.offsetWidth;
+          card.classList.add("flash");
+        }
+      };
+      setTimeout(() => go(true), 120);
+      setTimeout(() => go(false), 500);
+    }),
     applyCollapseState());
 }
 // faktoren[LG] ist entweder eine Zahl (nur ein Faktor, altes Format) oder {f, pp, p:[P1..P5]} (pp = Faktor pro Platz an)
@@ -2355,7 +2387,6 @@ function getRow(a, e) {
     "lg.dupCopyNum": {"en": "⚠ Already copied – forgot +1? Hold again to copy", "de": "⚠ Schon kopiert – +1 vergessen? Nochmal gedrückt halten zum Kopieren"},
     "lg.noBuildings": {"en": "No buildings in this group", "de": "Keine Bauwerke in dieser Gruppe"},
     "lg.noPlaces": {"en": "No places selected", "de": "Keine Plätze gewählt"},
-    "lg.statusZero": {"en": "{n} at level 0", "de": "{n} auf Stufe 0"},
     "lg.gbOne": {"en": "{n} GB", "de": "{n} LG"},
     "lg.gbMany": {"en": "{n} GBs", "de": "{n} LGs"},
     "lg.mixTitle": {"en": "Place mix (alternative)", "de": "Platz-Mix (Alternative)"},
@@ -3009,16 +3040,11 @@ ${h < c.length - 1 ? '<div style="height:18px;border-bottom:1px solid var(--bord
     ? e.map((n) => `⚠\uFE0F ${n}`).join("<br>")
     : statusChips();
 }
+// Status: nur Gebäude mit Stufe > 0 als antippbare Chips; Tipp klappt „Bauwerke & Stufen“ auf und springt zur Karte
 function statusChips() {
-  const chip = (n, c) => `<span class="chip ${c}">${AB(n)} ${levels[n]}</span>`,
-    act = ORDER.filter((n) => levels[n] > 0),
-    zero = ORDER.filter((n) => !(levels[n] > 0));
-  return (
-    `<div class="st-chips">${act.map((n) => chip(n, "on")).join("")}</div>` +
-    (zero.length
-      ? `<details class="st-zero"${act.length ? "" : " open"}><summary>${tl("lg.statusZero", { n: zero.length })}</summary>${zero.map((n) => chip(n, "zero")).join("")}</details>`
-      : "")
-  );
+  return `<div class="st-chips">${ORDER.filter((n) => levels[n] > 0)
+    .map((n) => `<button type="button" class="chip on st-go" data-abbr="${n}">${AB(n)} ${levels[n]}</button>`)
+    .join("")}</div>`;
 }
 function numKey(n) {
   const p = n.closest(".group-output-panel"),
