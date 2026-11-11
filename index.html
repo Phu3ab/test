@@ -503,6 +503,25 @@ button.chip.st-go {
   font-size: 0.72rem;
   cursor: pointer;
 }
+.chip.on.open {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+/* eingeklappt: nur einzeln aufgeklappte Karten zeigen */
+.panel.collapsed:has(.bcard.xopen) .panel-body {
+  display: block;
+  height: auto;
+  opacity: 1;
+  visibility: visible;
+  margin: 8px 0 0;
+}
+.panel.collapsed .bcard:not(.xopen),
+.panel.collapsed .panel-body > :not(#buildings) {
+  display: none;
+}
+body.tgo > *:not(#feWrap):not(#tabs):not(#plHost):not(#lgSel):not(.lgpk):not(.thmb) {
+  visibility: hidden;
+}
 .bcard.flash {
   animation: bflash 1.2s ease;
 }
@@ -2210,6 +2229,8 @@ let levels = Object.assign({}, DEFAULT_LEVELS),
 function pk(a) {
   return `${a}:${activeProfileId}`;
 }
+// Bauwerke, deren Karte im eingeklappten Abschnitt einzeln aufgeklappt ist (nur Sitzung)
+const openCards = new Set();
 function applyCollapseState() {
   const a = { buildings: "panelBuildings", sniper: "panelSniper", groups: "panelGroups", backup: "panelBackup" };
   for (const e in a) {
@@ -2232,23 +2253,31 @@ function initCollapsibles() {
     document.body.addEventListener("click", (a) => {
       const c = a.target.closest(".st-go");
       if (!c) return;
-      collapsed.buildings = false;
-      applyCollapseState();
-      saveAll();
-      // Karte nach dem Aufklappen zentrieren; Layout kann sich noch setzen (Schriften, Bilder), daher zweimal
-      const go = (first) => {
-        const k = [...document.querySelectorAll("#buildings .lvl-input")].find((x) => x.dataset.abbr === c.dataset.abbr),
-          card = k && k.closest(".bcard");
-        if (!card) return;
-        card.scrollIntoView({ block: "center" });
-        if (first) {
-          card.classList.remove("flash");
-          void card.offsetWidth;
-          card.classList.add("flash");
-        }
-      };
-      setTimeout(() => go(true), 120);
-      setTimeout(() => go(false), 500);
+      const ab = c.dataset.abbr,
+        findCard = () => {
+          const k = [...document.querySelectorAll("#buildings .lvl-input")].find((x) => x.dataset.abbr === ab);
+          return k && k.closest(".bcard");
+        },
+        go = (flash) => {
+          const card = findCard();
+          if (!card) return;
+          card.scrollIntoView({ block: "center" });
+          if (flash) {
+            card.classList.remove("flash");
+            void card.offsetWidth;
+            card.classList.add("flash");
+          }
+        };
+      if (document.getElementById("panelBuildings").classList.contains("collapsed")) {
+        // eingeklappter Abschnitt: nur die Karte dieses Bauwerks ein-/ausblenden (CSS :has, Klasse xopen)
+        openCards.has(ab) ? openCards.delete(ab) : openCards.add(ab);
+        c.classList.toggle("open", openCards.has(ab));
+        const card = findCard();
+        card && card.classList.toggle("xopen", openCards.has(ab));
+        return;
+      }
+      go(true);
+      setTimeout(() => go(false), 400);
     }),
     applyCollapseState());
 }
@@ -2695,7 +2724,7 @@ function renderBuildings() {
   ((a.innerHTML = ""),
     ORDER.forEach((e) => {
       const t = document.createElement("div");
-      t.className = "bcard";
+      t.className = "bcard" + (openCards.has(e) ? " xopen" : "");
       const n = DATA[e] ? DATA[e].max : 0,
         r = effectiveFaktor(e),
         fo = fkObj(e);
@@ -3043,7 +3072,7 @@ ${h < c.length - 1 ? '<div style="height:18px;border-bottom:1px solid var(--bord
 // Status: nur Gebäude mit Stufe > 0 als antippbare Chips; Tipp klappt „Bauwerke & Stufen“ auf und springt zur Karte
 function statusChips() {
   return `<div class="st-chips">${ORDER.filter((n) => levels[n] > 0)
-    .map((n) => `<button type="button" class="chip on st-go" data-abbr="${n}">${AB(n)} ${levels[n]}</button>`)
+    .map((n) => `<button type="button" class="chip on st-go${openCards.has(n) ? " open" : ""}" data-abbr="${n}">${AB(n)} ${levels[n]}</button>`)
     .join("")}</div>`;
 }
 function numKey(n) {
@@ -4020,12 +4049,25 @@ const tabViews = (n) =>
             !e.hidden,
         )
       : [document.getElementById("feWrap")];
+const tabIsFrame = (x) => x == "fe" || x == "cp" || x == "nf";
 function tabGo(n) {
+  document.body.classList.remove("tgo");
+  // Wechsel zwischen Effizienz, Planer und Zeitplan: nur der Rahmeninhalt blendet ein, der LG-Rechner darunter darf nicht aufblitzen
+  if (tabIsFrame(tabCur) && tabIsFrame(n) && n != tabCur && document.body.animate) {
+    tab(n);
+    tabCur = n;
+    const fr = document.getElementById(n == "fe" ? "fe" : n == "cp" ? "cpf" : "nf");
+    fr.getAnimations().forEach((x) => x.cancel());
+    fr.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: "ease-out" });
+    return;
+  }
+  // Verlassen eines Rahmen-Tabs: darunterliegende Seite während des Ausblendens verbergen
+  tabIsFrame(tabCur) && document.body.classList.add("tgo");
   const my = ++tabSeq,
     old = tabViews(tabCur),
     fx = (els, kf, o) => els.map((e) => e.animate && e.animate(kf, o));
   if (!document.body.animate || matchMedia("(prefers-reduced-motion: reduce)").matches || n == tabCur)
-    return (tab(n), (tabCur = n));
+    return (document.body.classList.remove("tgo"), tab(n), (tabCur = n));
   old.forEach((e) => e.getAnimations().forEach((a) => a.cancel()));
   document.querySelectorAll("#tabs button").forEach((i) => i.classList.toggle("on", i.dataset.t == n));
   const out = fx(
@@ -4039,6 +4081,7 @@ function tabGo(n) {
     run = () => {
       if (my != tabSeq) return;
       old.forEach((e) => e.getAnimations().forEach((a) => a.cancel()));
+      document.body.classList.remove("tgo");
       tab(n);
       tabCur = n;
       fx(
