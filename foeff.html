@@ -1545,10 +1545,10 @@ const area = (e) => {
   T = {
     eff: "f.tab.eff",
     kits: "f.tab.kits",
-    lg: "f.tab.lg",
-    lgt: "f.tab.lgt",
     city: "f.tab.city",
     inv: "f.tab.inv",
+    lg: "f.tab.lg",
+    lgt: "f.tab.lgt",
     al: "f.tab.al",
     tr: "f.tab.tr",
     w: "f.tab.w",
@@ -1566,40 +1566,21 @@ const area = (e) => {
   ($("#nav").onclick = (e) => {
     e.target.dataset.k && swTab(e.target.dataset.k);
   }));
-// Tabwechsel: alter Inhalt blendet aus, neuer ein (Web Animations API, damit es bei jedem Klick neu startet)
-let swSeq = 0;
+// Tabwechsel: sofort wechseln, neuer Inhalt blendet 180 ms ein (gleiche Dauer wie die Haupt-Tabs in index.html)
 function swTab(k) {
-  const v = $("#v"),
-    my = ++swSeq;
+  const v = $("#v");
   ((tab = k), sv("tab", tab));
   document.querySelectorAll("nav button").forEach((e) => e.classList.toggle("on", e.dataset.k == tab));
-  if (!v.animate || matchMedia("(prefers-reduced-motion: reduce)").matches) return draw();
   v.getAnimations().forEach((a) => a.cancel());
+  draw();
+  if (!v.animate || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   v.animate(
     [
+      { opacity: 0, transform: "translateY(8px)" },
       { opacity: 1, transform: "none" },
-      { opacity: 0, transform: "translateY(-8px)" },
     ],
-    {
-      duration: 120,
-      easing: "ease-in",
-      fill: "forwards",
-    },
-  ).onfinish = () => {
-    if (my != swSeq) return;
-    v.getAnimations().forEach((a) => a.cancel());
-    draw();
-    v.animate(
-      [
-        { opacity: 0, transform: "translateY(12px)" },
-        { opacity: 1, transform: "none" },
-      ],
-      {
-        duration: 260,
-        easing: "ease-out",
-      },
-    );
-  };
+    { duration: 180, easing: "ease-out" },
+  );
 }
 function draw() {
   try {

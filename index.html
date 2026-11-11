@@ -4035,8 +4035,7 @@ function tab(n) {
   } catch {}
 }
 // Ansichtswechsel mit Aus-/Einblenden (Web Animations API: startet bei jedem Klick neu, auch bei schnellem Wechsel)
-let tabCur = "lg",
-  tabSeq = 0;
+let tabCur = "lg";
 const tabViews = (n) =>
   n == "pl"
     ? [document.getElementById("plHost")]
@@ -4050,51 +4049,27 @@ const tabViews = (n) =>
         )
       : [document.getElementById("feWrap")];
 const tabIsFrame = (x) => x == "fe" || x == "cp" || x == "nf";
+// Alle Tabwechsel gleich: sofort wechseln, neuer Inhalt blendet 180 ms ein. Bei Rahmen-Tabs blendet nur der Rahmeninhalt ein
+// (der opake Rahmen deckt die Seite darunter ab, kein Aufblitzen des LG-Rechners).
 function tabGo(n) {
-  // Animiert wird nur zwischen LG-Rechner und Powerlevel. Rahmen-Tabs (Effizienz, Planer, Zeitplan) wechseln sofort,
-  // nur ihr Inhalt blendet ein; der opake Rahmen deckt die Seite darunter ab (kein Aufblitzen des LG-Rechners).
-  if (n != tabCur && document.body.animate && (tabIsFrame(n) || tabIsFrame(tabCur))) {
-    const was = tabCur;
-    tabSeq++;
-    tab(n);
-    tabCur = n;
-    const els = tabIsFrame(n) ? [document.getElementById(n == "fe" ? "fe" : n == "cp" ? "cpf" : "nf")] : tabViews(n);
-    els.forEach((e) => {
-      e.getAnimations().forEach((x) => x.cancel());
-      e.animate(tabIsFrame(was) && tabIsFrame(n) ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 180, easing: "ease-out" });
-    });
-    return;
-  }
-  const my = ++tabSeq,
-    old = tabViews(tabCur),
-    fx = (els, kf, o) => els.map((e) => e.animate && e.animate(kf, o));
-  if (!document.body.animate || matchMedia("(prefers-reduced-motion: reduce)").matches || n == tabCur)
-    return (tab(n), (tabCur = n));
-  old.forEach((e) => e.getAnimations().forEach((a) => a.cancel()));
-  document.querySelectorAll("#tabs button").forEach((i) => i.classList.toggle("on", i.dataset.t == n));
-  const out = fx(
-      old,
-      [
-        { opacity: 1, transform: "none" },
-        { opacity: 0, transform: "translateY(-8px)" },
-      ],
-      { duration: 120, easing: "ease-in", fill: "forwards" },
-    ),
-    run = () => {
-      if (my != tabSeq) return;
-      old.forEach((e) => e.getAnimations().forEach((a) => a.cancel()));
-      tab(n);
-      tabCur = n;
-      fx(
-        tabViews(n),
-        [
-          { opacity: 0, transform: "translateY(12px)" },
-          { opacity: 1, transform: "none" },
-        ],
-        { duration: 260, easing: "ease-out" },
-      );
-    };
-  out[0] ? (out[0].onfinish = run) : run();
+  if (n == tabCur) return;
+  const was = tabCur;
+  tab(n);
+  tabCur = n;
+  if (!document.body.animate || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const els = tabIsFrame(n) ? [document.getElementById(n == "fe" ? "fe" : n == "cp" ? "cpf" : "nf")] : tabViews(n);
+  els.forEach((e) => {
+    e.getAnimations().forEach((x) => x.cancel());
+    e.animate(
+      tabIsFrame(was) && tabIsFrame(n)
+        ? [{ opacity: 0 }, { opacity: 1 }]
+        : [
+            { opacity: 0, transform: "translateY(8px)" },
+            { opacity: 1, transform: "none" },
+          ],
+      { duration: 180, easing: "ease-out" },
+    );
+  });
 }
 document.getElementById("tabs").onclick = (n) => {
   const i = n.target.closest("button");
