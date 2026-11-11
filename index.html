@@ -519,9 +519,6 @@ button.chip.st-go {
 .panel.collapsed .panel-body > :not(#buildings) {
   display: none;
 }
-body.tgo > *:not(#feWrap):not(#tabs):not(#plHost):not(#lgSel):not(.lgpk):not(.thmb) {
-  visibility: hidden;
-}
 .bcard.flash {
   animation: bflash 1.2s ease;
 }
@@ -1299,7 +1296,10 @@ button.lgpk::after {
 }
 /* Zeitalter-Knopf: gleiche Höhe und Schrift wie die Sprachwahl */
 #era + button.pk {
-  max-width: 28vw;
+  width: 30vw !important;
+  max-width: 30vw !important;
+  min-width: 0 !important;
+  flex: none !important;
   height: 30px;
   padding-top: 0;
   padding-bottom: 0;
@@ -4051,23 +4051,25 @@ const tabViews = (n) =>
       : [document.getElementById("feWrap")];
 const tabIsFrame = (x) => x == "fe" || x == "cp" || x == "nf";
 function tabGo(n) {
-  document.body.classList.remove("tgo");
-  // Wechsel zwischen Effizienz, Planer und Zeitplan: nur der Rahmeninhalt blendet ein, der LG-Rechner darunter darf nicht aufblitzen
-  if (tabIsFrame(tabCur) && tabIsFrame(n) && n != tabCur && document.body.animate) {
+  // Animiert wird nur zwischen LG-Rechner und Powerlevel. Rahmen-Tabs (Effizienz, Planer, Zeitplan) wechseln sofort,
+  // nur ihr Inhalt blendet ein; der opake Rahmen deckt die Seite darunter ab (kein Aufblitzen des LG-Rechners).
+  if (n != tabCur && document.body.animate && (tabIsFrame(n) || tabIsFrame(tabCur))) {
+    const was = tabCur;
+    tabSeq++;
     tab(n);
     tabCur = n;
-    const fr = document.getElementById(n == "fe" ? "fe" : n == "cp" ? "cpf" : "nf");
-    fr.getAnimations().forEach((x) => x.cancel());
-    fr.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: "ease-out" });
+    const els = tabIsFrame(n) ? [document.getElementById(n == "fe" ? "fe" : n == "cp" ? "cpf" : "nf")] : tabViews(n);
+    els.forEach((e) => {
+      e.getAnimations().forEach((x) => x.cancel());
+      e.animate(tabIsFrame(was) && tabIsFrame(n) ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 180, easing: "ease-out" });
+    });
     return;
   }
-  // Verlassen eines Rahmen-Tabs: darunterliegende Seite während des Ausblendens verbergen
-  tabIsFrame(tabCur) && document.body.classList.add("tgo");
   const my = ++tabSeq,
     old = tabViews(tabCur),
     fx = (els, kf, o) => els.map((e) => e.animate && e.animate(kf, o));
   if (!document.body.animate || matchMedia("(prefers-reduced-motion: reduce)").matches || n == tabCur)
-    return (document.body.classList.remove("tgo"), tab(n), (tabCur = n));
+    return (tab(n), (tabCur = n));
   old.forEach((e) => e.getAnimations().forEach((a) => a.cancel()));
   document.querySelectorAll("#tabs button").forEach((i) => i.classList.toggle("on", i.dataset.t == n));
   const out = fx(
@@ -4081,7 +4083,6 @@ function tabGo(n) {
     run = () => {
       if (my != tabSeq) return;
       old.forEach((e) => e.getAnimations().forEach((a) => a.cancel()));
-      document.body.classList.remove("tgo");
       tab(n);
       tabCur = n;
       fx(
