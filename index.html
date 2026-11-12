@@ -815,7 +815,7 @@ body {
 body.fe {
   overflow: hidden;
 }
-body.pl > *:not(#plHost):not(#tabs):not(#feWrap):not(#lgSel):not(.lgpk):not(.thmb) {
+body.pl > *:not(#plHost):not(#tabs):not(#feWrap):not(#lgSel):not(.lgpk):not(.thmb):not(.pkov):not(#cpToast) {
   display: none !important;
 }
 #plHost {
@@ -1007,6 +1007,36 @@ body.fe #lgSel + button.lgpk {
   font-size: 0.8rem;
 }
 
+.group-output-title.gt {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 10px;
+}
+.group-output-title.gt .lvlline {
+  grid-column: 1 / -1;
+}
+.group-output-title.gt button.plus1 {
+  padding: 9px 18px;
+  min-width: 64px;
+  margin: 0;
+}
+#groupOutputs.noanim .group-output-panel,
+#groupOutputs.noanim .go-body {
+  animation: none;
+}
+.chip.grp {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.chip.grp.open {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+.st-groups {
+  margin-top: 4px;
+}
 .group-output-title .lvlline {
   display: block;
   font-size: 0.72rem;
@@ -2251,6 +2281,18 @@ function initCollapsibles() {
       ((collapsed[t] = !collapsed[t]), applyCollapseState(), saveAll());
     }),
     document.body.addEventListener("click", (a) => {
+      const gc = a.target.closest(".st-grp");
+      if (gc) {
+        const gid = gc.dataset.gid,
+          pn = [...document.querySelectorAll(".group-output-panel")].find((x) => x.dataset.gid === gid);
+        if (!pn) return;
+        collapsed.groupOutputs[gid] = !collapsed.groupOutputs[gid];
+        pn.classList.toggle("collapsed", !!collapsed.groupOutputs[gid]);
+        gc.classList.toggle("open", !collapsed.groupOutputs[gid]);
+        saveAll();
+        collapsed.groupOutputs[gid] || setTimeout(() => pn.scrollIntoView({ block: "start" }), 340);
+        return;
+      }
       const c = a.target.closest(".st-go");
       if (!c) return;
       const ab = c.dataset.abbr,
@@ -2980,6 +3022,8 @@ function wireCopyButton(a, e, sig) {
 }
 function renderGroupOutputs() {
   const a = document.getElementById("groupOutputs");
+  a.classList.toggle("noanim", goDrawn);
+  goDrawn = !0;
   a.innerHTML = "";
   let e = [];
   groups.forEach((n) => {
@@ -3026,9 +3070,10 @@ ${h < c.length - 1 ? '<div style="height:18px;border-bottom:1px solid var(--bord
         f.push({ t2id: k, btn2id: v }));
     }),
       (o.innerHTML = `
-<div class="group-output-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-<span><span class="go-arrow">▼</span>${groupName(n.name)} (${tl(r.length === 1 ? "lg.gbOne" : "lg.gbMany", { n: r.length })})<span class="lvlline">${r.map((p) => AB(p) + " " + levels[p]).join(" · ")}</span></span>
-<button class="secondary plus1" id="${i}" ${r.length ? "" : "disabled"}>+1 (${groupName(n.name)})</button>
+<div class="group-output-title gt">
+<span class="gt-main"><span class="go-arrow">▼</span>${groupName(n.name)} (${tl(r.length === 1 ? "lg.gbOne" : "lg.gbMany", { n: r.length })})</span>
+<button class="secondary plus1" id="${i}" ${r.length ? "" : "disabled"}>+1</button>
+<span class="lvlline">${r.map((p) => AB(p) + " " + levels[p]).join(" · ")}</span>
 </div>
 <div class="go-body">${l}${xcostGroupHTML(n, r)}${gmixHTML(n, r)}</div>
 `),
@@ -3070,10 +3115,24 @@ ${h < c.length - 1 ? '<div style="height:18px;border-bottom:1px solid var(--bord
     : statusChips();
 }
 // Status: nur Gebäude mit Stufe > 0 als antippbare Chips; Tipp klappt „Bauwerke & Stufen“ auf und springt zur Karte
+let goDrawn = !1;
 function statusChips() {
-  return `<div class="st-chips">${ORDER.filter((n) => levels[n] > 0)
-    .map((n) => `<button type="button" class="chip on st-go${openCards.has(n) ? " open" : ""}" data-abbr="${n}">${AB(n)} ${levels[n]}</button>`)
-    .join("")}</div>`;
+  const gb = groups
+    .map((g) => ({ g, n: ORDER.filter((p) => (assignment[p] || []).includes(g.id)).length }))
+    .filter((x) => x.n > 0);
+  return (
+    `<div class="st-chips">${ORDER.filter((n) => levels[n] > 0)
+      .map((n) => `<button type="button" class="chip on st-go${openCards.has(n) ? " open" : ""}" data-abbr="${n}">${AB(n)} ${levels[n]}</button>`)
+      .join("")}</div>` +
+    (gb.length
+      ? `<div class="st-chips st-groups">${gb
+          .map(
+            (x) =>
+              `<button type="button" class="chip grp st-grp${collapsed.groupOutputs[x.g.id] ? "" : " open"}" data-gid="${x.g.id}">${groupName(x.g.name)} · ${x.n}</button>`,
+          )
+          .join("")}</div>`
+      : "")
+  );
 }
 function numKey(n) {
   const p = n.closest(".group-output-panel"),
