@@ -1526,15 +1526,6 @@ button.pk.tm {
 </div>
 </div>
 </div>
-<div class="panel collapsed" id="panelSniper">
-<h2 class="section collapsible-header" data-panel="sniper">
-<span class="collapse-arrow">▼</span> <span data-i18n="lg.sniper">🎯 Sniper-Ausgleich</span>
-</h2>
-<div class="panel-body" id="bodySniper">
-<div class="status" data-i18n="lg.sniperHelp">Eingezahlte FP je Platz eintragen. Benötigt = Platz − eingezahlt (nie unter 0).</div>
-<div id="sniperList"></div>
-</div>
-</div>
 <div class="panel" id="panelGroups">
 <h2 class="section collapsible-header" data-panel="groups">
 <span class="collapse-arrow" id="arrowGroups">▼</span> <span data-i18n="lg.groups">Gruppen verwalten</span>
@@ -1569,6 +1560,15 @@ button.pk.tm {
 <input type="file" id="backupFile" accept=".json,application/json,text/plain" hidden>
 </div>
 <div class="status" id="backupStatus"></div>
+</div>
+</div>
+<div class="panel collapsed" id="panelSniper">
+<h2 class="section collapsible-header" data-panel="sniper">
+<span class="collapse-arrow">▼</span> <span data-i18n="lg.sniper">🎯 Sniper-Ausgleich</span>
+</h2>
+<div class="panel-body" id="bodySniper">
+<div class="status" data-i18n="lg.sniperHelp">Eingezahlte FP je Platz eintragen. Benötigt = Platz − eingezahlt (nie unter 0).</div>
+<div id="sniperList"></div>
 </div>
 </div>
 <script>
@@ -3102,7 +3102,7 @@ ${h < c.length - 1 ? '<div style="height:18px;border-bottom:1px solid var(--bord
 <div class="group-output-title gt">
 <span class="gt-main"><span class="go-arrow">▼</span>${groupName(n.name)} (${tl(r.length === 1 ? "lg.gbOne" : "lg.gbMany", { n: r.length })})</span>
 <button class="secondary plus1" id="${i}" ${r.length ? "" : "disabled"}>+1</button>
-<span class="lvlline">${r.map((p) => AB(p) + " " + levels[p]).join(" · ")}</span>
+<span class="lvlline">${r.map((p) => `<span class="chip ${levels[p] > 0 ? "on" : "zero"}">${AB(p)} ${levels[p]}</span>`).join("")}</span>
 </div>
 <div class="go-body">${l}${xcostGroupHTML(n, r)}${gmixHTML(n, r)}</div>
 `),
