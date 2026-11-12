@@ -1203,6 +1203,41 @@ button.chip.st-grp {
     opacity: 1;
   }
 }
+
+/* Eingeklappte Gruppen-Ausgabe: nur als kompakte Pille (Name · Anzahl), Antippen klappt auf */
+#groupOutputs .group-output-panel.collapsed {
+  display: inline-block;
+  margin: 4px 8px 4px 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  vertical-align: top;
+}
+#groupOutputs .group-output-panel.collapsed .group-output-title.gt {
+  display: inline-flex;
+  position: static;
+  margin: 0;
+  box-shadow: none;
+  padding: 6px 14px;
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  background: var(--panel);
+  cursor: pointer;
+}
+#groupOutputs .group-output-panel.collapsed .gt-main {
+  font-size: 0.95rem;
+  color: var(--accent);
+}
+#groupOutputs .group-output-panel.collapsed .plus1,
+#groupOutputs .group-output-panel.collapsed .lvlline,
+#groupOutputs .group-output-panel.collapsed .go-body,
+#groupOutputs .group-output-panel.collapsed .panel-body {
+  display: none;
+}
+#groupOutputs {
+  margin-bottom: 12px;
+}
 </style><style>
 /* Gemeinsame Auswahl (js/pick.js). Erwartet die Variablen --in --t --b --m --c --a --a2 der Seite. */
 button.pk {
@@ -1540,6 +1575,15 @@ button.pk.tm {
 </div>
 </div>
 <div id="groupOutputs"></div>
+<div class="panel collapsed" id="panelSniper">
+<h2 class="section collapsible-header" data-panel="sniper">
+<span class="collapse-arrow">▼</span> <span data-i18n="lg.sniper">🎯 Sniper-Ausgleich</span>
+</h2>
+<div class="panel-body" id="bodySniper">
+<div class="status" data-i18n="lg.sniperHelp">Eingezahlte FP je Platz eintragen. Benötigt = Platz − eingezahlt (nie unter 0).</div>
+<div id="sniperList"></div>
+</div>
+</div>
 <div class="panel" id="panelBackup">
 <h2 class="section collapsible-header" data-panel="backup">
 <span class="collapse-arrow" id="arrowBackup">▼</span> <span data-i18n="bk.title">💾 Daten sichern &amp; laden</span>
@@ -1560,15 +1604,6 @@ button.pk.tm {
 <input type="file" id="backupFile" accept=".json,application/json,text/plain" hidden>
 </div>
 <div class="status" id="backupStatus"></div>
-</div>
-</div>
-<div class="panel collapsed" id="panelSniper">
-<h2 class="section collapsible-header" data-panel="sniper">
-<span class="collapse-arrow">▼</span> <span data-i18n="lg.sniper">🎯 Sniper-Ausgleich</span>
-</h2>
-<div class="panel-body" id="bodySniper">
-<div class="status" data-i18n="lg.sniperHelp">Eingezahlte FP je Platz eintragen. Benötigt = Platz − eingezahlt (nie unter 0).</div>
-<div id="sniperList"></div>
 </div>
 </div>
 <script>
