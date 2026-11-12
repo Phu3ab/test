@@ -1037,6 +1037,20 @@ body.fe #lgSel + button.lgpk {
 .st-groups {
   margin-top: 4px;
 }
+.st-gblock {
+  margin-bottom: 4px;
+}
+.st-gm {
+  margin: 4px 0 2px 14px;
+  padding-left: 8px;
+  border-left: 2px solid var(--accent);
+}
+button.chip.st-go,
+button.chip.st-grp {
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
 .group-output-title .lvlline {
   display: block;
   font-size: 0.72rem;
@@ -2261,6 +2275,8 @@ function pk(a) {
 }
 // Bauwerke, deren Karte im eingeklappten Abschnitt einzeln aufgeklappt ist (nur Sitzung)
 const openCards = new Set();
+// Gruppen, deren Bauwerke im Status aufgelistet sind (nur Sitzung)
+const openGroups = new Set();
 function applyCollapseState() {
   const a = { buildings: "panelBuildings", sniper: "panelSniper", groups: "panelGroups", backup: "panelBackup" };
   for (const e in a) {
@@ -2283,14 +2299,9 @@ function initCollapsibles() {
     document.body.addEventListener("click", (a) => {
       const gc = a.target.closest(".st-grp");
       if (gc) {
-        const gid = gc.dataset.gid,
-          pn = [...document.querySelectorAll(".group-output-panel")].find((x) => x.dataset.gid === gid);
-        if (!pn) return;
-        collapsed.groupOutputs[gid] = !collapsed.groupOutputs[gid];
-        pn.classList.toggle("collapsed", !!collapsed.groupOutputs[gid]);
-        gc.classList.toggle("open", !collapsed.groupOutputs[gid]);
-        saveAll();
-        collapsed.groupOutputs[gid] || setTimeout(() => pn.scrollIntoView({ block: "start" }), 340);
+        const gid = gc.dataset.gid;
+        openGroups.has(gid) ? openGroups.delete(gid) : openGroups.add(gid);
+        refreshStatus();
         return;
       }
       const c = a.target.closest(".st-go");
@@ -2313,7 +2324,7 @@ function initCollapsibles() {
       if (document.getElementById("panelBuildings").classList.contains("collapsed")) {
         // eingeklappter Abschnitt: nur die Karte dieses Bauwerks ein-/ausblenden (CSS :has, Klasse xopen)
         openCards.has(ab) ? openCards.delete(ab) : openCards.add(ab);
-        c.classList.toggle("open", openCards.has(ab));
+        document.querySelectorAll(`.st-go[data-abbr="${ab}"]`).forEach((x) => x.classList.toggle("open", openCards.has(ab)));
         const card = findCard();
         card && card.classList.toggle("xopen", openCards.has(ab));
         return;
@@ -3109,26 +3120,36 @@ ${h < c.length - 1 ? '<div style="height:18px;border-bottom:1px solid var(--bord
           renderOutput());
       });
   });
-  const t = document.getElementById("status");
-  t.innerHTML = e.length
-    ? e.map((n) => `⚠\uFE0F ${n}`).join("<br>")
+  ((statusWarn = e), refreshStatus());
+}
+let statusWarn = [];
+function refreshStatus() {
+  document.getElementById("status").innerHTML = statusWarn.length
+    ? statusWarn.map((n) => `⚠\uFE0F ${n}`).join("<br>")
     : statusChips();
 }
 // Status: nur Gebäude mit Stufe > 0 als antippbare Chips; Tipp klappt „Bauwerke & Stufen“ auf und springt zur Karte
 let goDrawn = !1;
 function statusChips() {
-  const gb = groups
-    .map((g) => ({ g, n: ORDER.filter((p) => (assignment[p] || []).includes(g.id)).length }))
-    .filter((x) => x.n > 0);
+  const chip = (n) => {
+      const on = levels[n] > 0;
+      return `<button type="button" class="chip ${on ? "on" : "zero"} st-go${openCards.has(n) ? " open" : ""}" data-abbr="${n}">${AB(n)} ${levels[n] || 0}</button>`;
+    },
+    gb = groups
+      .map((g) => ({ g, m: ORDER.filter((p) => (assignment[p] || []).includes(g.id)) }))
+      .filter((x) => x.m.length > 0);
+  // Gruppen getrennt: Tipp auf eine Gruppe zeigt alle ihre Bauwerke (auch Stufe 0), Tipp darauf klappt deren Karte auf
   return (
     `<div class="st-chips">${ORDER.filter((n) => levels[n] > 0)
-      .map((n) => `<button type="button" class="chip on st-go${openCards.has(n) ? " open" : ""}" data-abbr="${n}">${AB(n)} ${levels[n]}</button>`)
+      .map(chip)
       .join("")}</div>` +
     (gb.length
-      ? `<div class="st-chips st-groups">${gb
+      ? `<div class="st-groups">${gb
           .map(
             (x) =>
-              `<button type="button" class="chip grp st-grp${collapsed.groupOutputs[x.g.id] ? "" : " open"}" data-gid="${x.g.id}">${groupName(x.g.name)} · ${x.n}</button>`,
+              `<div class="st-gblock"><button type="button" class="chip grp st-grp${openGroups.has(x.g.id) ? " open" : ""}" data-gid="${x.g.id}">${openGroups.has(x.g.id) ? "▾" : "▸"} ${groupName(x.g.name)} · ${x.m.length}</button>${
+                openGroups.has(x.g.id) ? `<div class="st-gm">${x.m.map(chip).join("")}</div>` : ""
+              }</div>`,
           )
           .join("")}</div>`
       : "")
