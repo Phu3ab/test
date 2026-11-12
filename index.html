@@ -1037,6 +1037,18 @@ body.fe #lgSel + button.lgpk {
 .st-groups {
   margin-top: 4px;
 }
+button.st-zhead {
+  display: block;
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  margin: 2px 0 4px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
 .st-gblock {
   margin-bottom: 4px;
 }
@@ -2297,6 +2309,11 @@ function initCollapsibles() {
       ((collapsed[t] = !collapsed[t]), applyCollapseState(), saveAll());
     }),
     document.body.addEventListener("click", (a) => {
+      if (a.target.closest(".st-zhead")) {
+        zeroOpen = !zeroOpen;
+        refreshStatus();
+        return;
+      }
       const gc = a.target.closest(".st-grp");
       if (gc) {
         const gid = gc.dataset.gid;
@@ -2470,6 +2487,7 @@ function getRow(a, e) {
     "lg.noBuildings": {"en": "No buildings in this group", "de": "Keine Bauwerke in dieser Gruppe"},
     "lg.noPlaces": {"en": "No places selected", "de": "Keine Plätze gewählt"},
     "lg.gbOne": {"en": "{n} GB", "de": "{n} LG"},
+    "lg.statusZero": {"en": "{n} at level 0", "de": "{n} auf Stufe 0"},
     "lg.gbMany": {"en": "{n} GBs", "de": "{n} LGs"},
     "lg.mixTitle": {"en": "Place mix (alternative)", "de": "Platz-Mix (Alternative)"},
     "lg.mixHelp": {"en": "Alternative to the place ranges: pick individual places per GB, e.g. P1, P3 and P5.", "de": "Alternative zu den Platzbereichen: einzelne Plätze pro LG wählen, z. B. P1, P3 und P5."},
@@ -3129,12 +3147,14 @@ function refreshStatus() {
     : statusChips();
 }
 // Status: nur Gebäude mit Stufe > 0 als antippbare Chips; Tipp klappt „Bauwerke & Stufen“ auf und springt zur Karte
-let goDrawn = !1;
+let goDrawn = !1,
+  zeroOpen = !1; // „auf Stufe 0“ im Status aufgeklappt (nur Sitzung)
 function statusChips() {
   const chip = (n) => {
       const on = levels[n] > 0;
       return `<button type="button" class="chip ${on ? "on" : "zero"} st-go${openCards.has(n) ? " open" : ""}" data-abbr="${n}">${AB(n)} ${levels[n] || 0}</button>`;
     },
+    zero = ORDER.filter((n) => !(levels[n] > 0)),
     gb = groups
       .map((g) => ({ g, m: ORDER.filter((p) => (assignment[p] || []).includes(g.id)) }))
       .filter((x) => x.m.length > 0);
@@ -3143,6 +3163,11 @@ function statusChips() {
     `<div class="st-chips">${ORDER.filter((n) => levels[n] > 0)
       .map(chip)
       .join("")}</div>` +
+    (zero.length
+      ? `<button type="button" class="st-zhead" aria-expanded="${zeroOpen}">${zeroOpen ? "▼" : "▶"} ${tl("lg.statusZero", { n: zero.length })}</button>${
+          zeroOpen ? `<div class="st-chips">${zero.map(chip).join("")}</div>` : ""
+        }`
+      : "") +
     (gb.length
       ? `<div class="st-groups">${gb
           .map(
